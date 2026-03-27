@@ -1,77 +1,74 @@
-# Built-in Rust types
+# 내장 Rust 타입
 
-> **What you'll learn:** Rust's fundamental types (`i32`, `u64`, `f64`, `bool`, `char`), type inference, explicit type annotations, and how they compare to C/C++ primitive types. No implicit conversions — Rust requires explicit casts.
+> **학습 내용:** Rust의 기본 타입(`i32`, `u64`, `f64`, `bool`, `char`), 타입 추론, 명시적 타입 주석, 그리고 C/C++ 기본 타입과의 비교를 배웁니다. 암시적 변환은 없으며, Rust는 명시적 캐스팅(explicit casts)을 요구합니다.
 
-- Rust has type inference, but also allows explicit specification of the type 
+- Rust는 타입 추론 기능이 있지만, ```:``` 뒤에 타입을 명시적으로 지정할 수도 있습니다.
 
-|  **Description**  |            **Type**            |          **Example**          |
+|  **설명**  |            **타입**            |          **예시**          |
 |:-----------------:|:------------------------------:|:-----------------------------:|
-| Signed integers   | i8, i16, i32, i64, i128, isize | -1, 42, 1_00_000, 1_00_000i64 |
-| Unsigned integers | u8, u16, u32, u64, u128, usize | 0, 42, 42u32, 42u64           |
-| Floating point    | f32, f64                       | 0.0, 0.42                     |
-| Unicode           | char                           | 'a', '$'                      |
-| Boolean           | bool                           | true, false                   |
+| 부호 있는 정수   | i8, i16, i32, i64, i128, isize | -1, 42, 1_00_000, 1_00_000i64 |
+| 부호 없는 정수 | u8, u16, u32, u64, u128, usize | 0, 42, 42u32, 42u64           |
+| 부동 소수점    | f32, f64                       | 0.0, 0.42                     |
+| 유니코드           | char                           | 'a', '$'                      |
+| 불리언           | bool                           | true, false                   |
 
-- Rust permits arbitrarily use of ```_``` between numbers for ease of reading
+- Rust는 가독성을 높이기 위해 숫자 사이에 ```_```를 임의로 사용하는 것을 허용합니다.
 ----
-### Rust type specification and assignment
-- Rust uses the ```let``` keyword to assign values to variables. The type of the variable can be optionally specified after a ```:```
+### Rust 타입 지정 및 할당
+- Rust는 변수에 값을 할당할 때 ```let``` 키워드를 사용합니다. 변수의 타입은 선택적으로 ```:``` 뒤에 지정할 수 있습니다.
 ```rust
 fn main() {
     let x : i32 = 42;
-    // These two assignments are logically equivalent
+    // 이 두 할당은 논리적으로 동일합니다.
     let y : u32 = 42;
     let z = 42u32;
 }
 ``` 
-- Function parameters and return values (if any) require an explicit type. The following takes an u8 parameter and returns u32
+- 함수의 매개변수와 반환값(있는 경우)은 명시적인 타입이 필요합니다. 다음 함수는 u8 매개변수를 받아 u32를 반환합니다.
 ```rust
 fn foo(x : u8) -> u32
 {
     return x as u32 * x as u32;
 }
 ```
-- Unused variables are prefixed with ```_``` to avoid compiler warnings
+- 사용하지 않는 변수에는 컴파일러 경고를 피하기 위해 접두사 ```_```를 붙입니다.
 ----
-# Rust type specification and inference
-- Rust can automatically infer the type of the variable based on the context. 
-- [▶ Try it in the Rust Playground](https://play.rust-lang.org/)
+# Rust 타입 지정 및 추론
+- Rust는 문맥에 따라 변수의 타입을 자동으로 추론할 수 있습니다.
+- [▶ Rust Playground에서 시도해 보기](https://play.rust-lang.org/)
 ```rust
 fn secret_of_life_u32(x : u32) {
-    println!("The u32 secret_of_life is {}", x);
+    println!("u32 타입의 secret_of_life는 {}입니다.", x);
 }
 
 fn secret_of_life_u8(x : u8) {
-    println!("The u8 secret_of_life is {}", x);
+    println!("u8 타입의 secret_of_life는 {}입니다.", x);
 }
 
 fn main() {
-    let a = 42; // The let keyword assigns a value; type of a is u32
-    let b = 42; // The let keyword assigns a value; inferred type of b is u8
+    let a = 42; // let 키워드가 값을 할당합니다. a의 타입은 u32로 추론됩니다.
+    let b = 42; // let 키워드가 값을 할당합니다. b의 추론된 타입은 u8입니다.
     secret_of_life_u32(a);
     secret_of_life_u8(b);
 }
 ```
 
-# Rust variables and mutability
-- Rust variables are **immutable** by default unless the ```mut``` keyword is used to denote that a variable is mutable. For example, the following code will not compile unless the ```let a = 42``` is changed to ```let mut a = 42```
+# Rust 변수 및 가변성(Mutability)
+- Rust 변수는 가변성을 나타내는 ```mut``` 키워드를 사용하지 않는 한 기본적으로 **불변(immutable)**입니다. 예를 들어, 다음 코드는 ```let a = 42```를 ```let mut a = 42```로 바꾸지 않으면 컴파일되지 않습니다.
 ```rust
 fn main() {
-    let a = 42; // Must be changed to let mut a = 42 to permit the assignment below 
-    a = 43;  // Will not compile unless the above is changed
+    let a = 42; // 아래 할당을 허용하려면 let mut a = 42로 변경해야 합니다.
+    a = 43;  // 위의 코드를 변경하지 않으면 컴파일되지 않습니다.
 }
 ```
-- Rust permits the reuse of the variable names (shadowing)
+- Rust는 변수 이름의 재사용(섀도잉, Shadowing)을 허용합니다.
 ```rust
 fn main() {
     let a = 42;
     {
-        let a = 43; //OK: Different variable with the same name
+        let a = 43; // OK: 이름은 같지만 다른 변수입니다.
     }
-    // a = 43; // Not permitted
-    let a = 43; // Ok: New variable and assignment
+    // a = 43; // 허용되지 않습니다.
+    let a = 43; // OK: 새로운 변수이며 새로운 할당입니다.
 }
 ```
-
-
-

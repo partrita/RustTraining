@@ -1,52 +1,49 @@
-## Iterator Power Tools Reference
+## 반복자(Iterator) 강력한 도구들 참조
 
-> **What you'll learn:** Advanced iterator combinators beyond `filter`/`map`/`collect` — `enumerate`, `zip`, `chain`, `flat_map`, `scan`, `windows`, and `chunks`. Essential for replacing C-style indexed `for` loops with safe, expressive Rust iterators.
+> **학습 내용:** `filter`/`map`/`collect`를 넘어서는 고급 반복자 어댑터인 `enumerate`, `zip`, `chain`, `flat_map`, `scan`, `windows`, `chunks` 등을 배웁니다. C 스타일의 인덱스 기반 `for` 루프를 안전하고 표현력이 뛰어난 Rust 반복자로 대체하는 데 필수적인 도구들입니다.
 
-The basic `filter`/`map`/`collect` chain covers many cases, but Rust's iterator library
-is far richer. This section covers the tools you'll reach for daily — especially when
-translating C loops that manually track indices, accumulate results, or process
-data in fixed-size chunks.
+기본적인 `filter`/`map`/`collect` 체인도 많은 경우를 해결하지만, Rust의 반복자 라이브러리는 훨씬 더 풍부합니다. 이 섹션에서는 인덱스를 수동으로 추적하거나, 결과를 누적하거나, 고정된 크기의 덩어리로 데이터를 처리하는 C 스타일 루프를 변환할 때 매일 사용하게 될 도구들을 다룹니다.
 
-### Quick Reference Table
+### 빠른 참조 테이블
 
-| Method | C Equivalent | What it does | Returns |
+| 메서드 | C 대응 개념 | 역할 | 반환 타입 |
 |--------|-------------|-------------|---------|
-| `enumerate()` | `for (int i=0; ...)` | Pairs each element with its index | `(usize, T)` |
-| `zip(other)` | Parallel arrays with same index | Pairs elements from two iterators | `(A, B)` |
-| `chain(other)` | Process array1 then array2 | Concatenates two iterators | `T` |
-| `flat_map(f)` | Nested loops | Maps then flattens one level | `U` |
-| `windows(n)` | `for (int i=0; i<len-n+1; i++) &arr[i..i+n]` | Overlapping slices of size `n` | `&[T]` |
-| `chunks(n)` | Process `n` elements at a time | Non-overlapping slices of size `n` | `&[T]` |
-| `fold(init, f)` | `int acc = init; for (...) acc = f(acc, x);` | Reduce to single value | `Acc` |
-| `scan(init, f)` | Running accumulator with output | Like `fold` but yields intermediate results | `Option<B>` |
-| `take(n)` / `skip(n)` | Start loop at offset / limit | First `n` / skip first `n` elements | `T` |
-| `take_while(f)` / `skip_while(f)` | `while (pred) {...}` | Take/skip while predicate holds | `T` |
-| `peekable()` | Lookahead with `arr[i+1]` | Allows `.peek()` without consuming | `T` |
-| `step_by(n)` | `for (i=0; i<len; i+=n)` | Take every nth element | `T` |
-| `unzip()` | Split parallel arrays | Collect pairs into two collections | `(A, B)` |
-| `sum()` / `product()` | Accumulate sum/product | Reduce with `+` or `*` | `T` |
-| `min()` / `max()` | Find extremes | Return `Option<T>` | `Option<T>` |
-| `any(f)` / `all(f)` | `bool found = false; for (...) ...` | Short-circuit boolean search | `bool` |
-| `position(f)` | `for (i=0; ...) if (pred) return i;` | Index of first match | `Option<usize>` |
+| `enumerate()` | `for (int i=0; ...)` | 각 요소를 해당 인덱스와 쌍으로 묶음 | `(usize, T)` |
+| `zip(other)` | 동일한 인덱스를 가진 병렬 배열 | 두 반복자의 요소를 쌍으로 묶음 | `(A, B)` |
+| `chain(other)` | 배열1 처리 후 배열2 처리 | 두 반복자를 연결함 | `T` |
+| `flat_map(f)` | 중첩 루프 | 매핑 후 한 수준 평탄화함 | `U` |
+| `windows(n)` | `for (int i=0; i<len-n+1; i++) &arr[i..i+n]` | 크기 `n`인 중첩되는 슬라이스 생성 | `&[T]` |
+| `chunks(n)` | 한 번에 `n`개씩 요소 처리 | 크기 `n`인 중첩되지 않는 슬라이스 생성 | `&[T]` |
+| `fold(init, f)` | `int acc = init; for (...) acc = f(acc, x);` | 단일 값으로 축약 | `Acc` |
+| `scan(init, f)` | 출력이 있는 중간 누산기 | `fold`와 비슷하지만 중간 결과를 산출함 | `Option<B>` |
+| `take(n)` / `skip(n)` | 오프셋/제한에서 루프 시작 | 처음 `n`개 선택 / 처음 `n`개 건너뜀 | `T` |
+| `take_while(f)` / `skip_while(f)` | `while (pred) {...}` | 조건이 참인 동안 선택/건너뜀 | `T` |
+| `peekable()` | `arr[i+1]`을 이용한 미리보기 | 소비하지 않고 `.peek()` 가능하게 함 | `T` |
+| `step_by(n)` | `for (i=0; i<len; i+=n)` | 매 n번째 요소마다 선택 | `T` |
+| `unzip()` | 병렬 배열 분리 | 쌍(pair)을 두 개의 컬렉션으로 분리하여 수집 | `(A, B)` |
+| `sum()` / `product()` | 합계/곱셈 누적 | `+` 또는 `*`를 사용하여 축약 | `T` |
+| `min()` / `max()` | 극값 찾기 | 최솟값/최댓값 반환 | `Option<T>` |
+| `any(f)` / `all(f)` | `bool found = false; for (...) ...` | 단락 평가(short-circuit) 불리언 검색 | `bool` |
+| `position(f)` | `for (i=0; ...) if (pred) return i;` | 첫 번째 일치하는 요소의 인덱스 | `Option<usize>` |
 
-### `enumerate` — Index + Value (replaces C index loops)
+### `enumerate` — 인덱스 + 값 (C 인덱스 루프 대체)
 
 ```rust
 fn main() {
     let sensors = ["GPU_TEMP", "CPU_TEMP", "FAN_RPM", "PSU_WATT"];
 
-    // C style: for (int i = 0; i < 4; i++) printf("[%d] %s\n", i, sensors[i]);
+    // C 스타일: for (int i = 0; i < 4; i++) printf("[%d] %s\n", i, sensors[i]);
     for (i, name) in sensors.iter().enumerate() {
         println!("[{i}] {name}");
     }
 
-    // Find the index of a specific sensor
+    // 특정 센서의 인덱스 찾기
     let gpu_idx = sensors.iter().position(|&s| s == "GPU_TEMP");
-    println!("GPU sensor at index: {gpu_idx:?}");  // Some(0)
+    println!("GPU 센서 인덱스: {gpu_idx:?}");  // Some(0)
 }
 ```
 
-### `zip` — Parallel Iteration (replaces parallel array loops)
+### `zip` — 병렬 반복 (병렬 배열 루프 대체)
 
 ```rust
 fn main() {
@@ -62,27 +59,27 @@ fn main() {
 }
 ```
 
-### `chain` — Concatenate Iterators
+### `chain` — 반복자 연결
 
 ```rust
 fn main() {
     let critical = vec!["ECC error", "Thermal shutdown"];
     let warnings = vec!["Link degraded", "Fan slow"];
 
-    // Process all events in priority order
+    // 모든 이벤트를 우선순위 순서대로 처리
     let all_events: Vec<_> = critical.iter().chain(warnings.iter()).collect();
     println!("{all_events:?}");
     // ["ECC error", "Thermal shutdown", "Link degraded", "Fan slow"]
 }
 ```
 
-### `flat_map` — Flatten Nested Results
+### `flat_map` — 중첩된 결과 평탄화
 
 ```rust
 fn main() {
     let lines = vec!["gpu:42:ok", "nic:99:fail", "cpu:7:ok"];
 
-    // Extract all numeric values from colon-separated lines
+    // 콜론(:)으로 구분된 라인에서 모든 숫자 값 추출
     let numbers: Vec<u32> = lines.iter()
         .flat_map(|line| line.split(':'))
         .filter_map(|token| token.parse::<u32>().ok())
@@ -91,41 +88,41 @@ fn main() {
 }
 ```
 
-### `windows` and `chunks` — Sliding and Fixed-Size Groups
+### `windows` 및 `chunks` — 슬라이딩 및 고정 크기 그룹
 
 ```rust
 fn main() {
     let temps = [65, 68, 72, 71, 75, 80, 78, 76];
 
-    // windows(3): overlapping groups of 3 (like a sliding average)
+    // windows(3): 중첩되는 3개씩의 그룹 (이동 평균과 유사)
     // C: for (int i = 0; i <= len-3; i++) avg(arr[i], arr[i+1], arr[i+2]);
     let moving_avg: Vec<f64> = temps.windows(3)
         .map(|w| w.iter().sum::<i32>() as f64 / 3.0)
         .collect();
-    println!("Moving avg: {moving_avg:.1?}");
+    println!("이동 평균: {moving_avg:.1?}");
 
-    // chunks(2): non-overlapping groups of 2
+    // chunks(2): 중첩되지 않는 2개씩의 그룹
     // C: for (int i = 0; i < len; i += 2) process(arr[i], arr[i+1]);
     for pair in temps.chunks(2) {
-        println!("Chunk: {pair:?}");
+        println!("덩어리(Chunk): {pair:?}");
     }
 
-    // chunks_exact(2): same but panics if remainder exists
-    // Also: .remainder() gives leftover elements
+    // chunks_exact(2): 동일하지만 나머지가 있으면 패닉 발생
+    // 또한: .remainder()는 남은 요소들을 제공함
 }
 ```
 
-### `fold` and `scan` — Accumulation
+### `fold` 및 `scan` — 누적 작업
 
 ```rust
 fn main() {
     let values = [10, 20, 30, 40, 50];
 
-    // fold: single final result (like C's accumulator loop)
+    // fold: 단일 최종 결과 (C의 누산기 루프와 유사)
     let sum = values.iter().fold(0, |acc, &x| acc + x);
-    println!("Sum: {sum}");  // 150
+    println!("합계: {sum}");  // 150
 
-    // Build a string with fold
+    // fold를 사용하여 문자열 빌드
     let csv = values.iter()
         .fold(String::new(), |acc, x| {
             if acc.is_empty() { format!("{x}") }
@@ -133,28 +130,27 @@ fn main() {
         });
     println!("CSV: {csv}");  // "10,20,30,40,50"
 
-    // scan: like fold but yields intermediate results
+    // scan: fold와 비슷하지만 중간 결과를 산출함
     let running_sum: Vec<i32> = values.iter()
         .scan(0, |state, &x| {
             *state += x;
             Some(*state)
         })
         .collect();
-    println!("Running sum: {running_sum:?}");  // [10, 30, 60, 100, 150]
+    println!("누적 합계: {running_sum:?}");  // [10, 30, 60, 100, 150]
 }
 ```
 
-### Exercise: Sensor Data Pipeline
+### 연습 문제: 센서 데이터 파이프라인
 
-Given raw sensor readings (one per line, format `"sensor_name:value:unit"`), write an
-iterator pipeline that:
-1. Parses each line into `(name, f64, unit)`
-2. Filters out readings below a threshold
-3. Groups by sensor name using `fold` into a `HashMap`
-4. Prints the average reading per sensor
+원시 센서 데이터(한 줄당 하나, 형식 `"센서이름:값:단위"`)가 주어졌을 때, 다음을 수행하는 반복자 파이프라인을 작성하세요:
+1. 각 줄을 `(이름, f64, 단위)`로 파싱합니다.
+2. 특정 임계값(threshold) 미만의 값은 필터링합니다.
+3. `fold`를 사용하여 센서 이름별로 `HashMap`에 그룹화합니다.
+4. 센서당 평균 값을 출력합니다.
 
 ```rust
-// Starter code
+// 시작 코드
 fn main() {
     let raw_data = vec![
         "gpu_temp:72.5:C",
@@ -166,11 +162,11 @@ fn main() {
         "fan_rpm:1150.0:RPM",
     ];
     let threshold = 70.0;
-    // TODO: Parse, filter values >= threshold, group by name, compute averages
+    // TODO: 파싱, 임계값 이상의 값 필터링, 이름별 그룹화, 평균 계산
 }
 ```
 
-<details><summary>Solution (click to expand)</summary>
+<details><summary>풀이 (클릭하여 확장)</summary>
 
 ```rust
 use std::collections::HashMap;
@@ -187,7 +183,7 @@ fn main() {
     ];
     let threshold = 70.0;
 
-    // Parse → filter → group → average
+    // 파싱 → 필터링 → 그룹화 → 평균 계산
     let grouped = raw_data.iter()
         .filter_map(|line| {
             let parts: Vec<&str> = line.splitn(3, ':').collect();
@@ -206,23 +202,21 @@ fn main() {
 
     for (name, values) in &grouped {
         let avg = values.iter().sum::<f64>() / values.len() as f64;
-        println!("{name}: avg={avg:.1} ({} readings)", values.len());
+        println!("{name}: 평균={avg:.1} ({}개의 측정값)", values.len());
     }
 }
-// Output (order may vary):
-// gpu_temp: avg=75.6 (3 readings)
-// fan_rpm: avg=1175.0 (2 readings)
+// 출력 (순서는 다를 수 있음):
+// gpu_temp: 평균=75.6 (3개의 측정값)
+// fan_rpm: 평균=1175.0 (2개의 측정값)
 ```
 
 </details>
 
 
-# Rust iterators
-- The ```Iterator``` trait is used to implement iteration over user defined types (https://doc.rust-lang.org/std/iter/trait.IntoIterator.html)
-    - In the example, we'll implement an iterator for the Fibonacci sequence, which starts with 1, 1, 2, ... and the successor is the sum of the previous two numbers
-    - The ```associated type``` in the ```Iterator``` (```type Item = u32;```) defines the output type from our iterator (```u32```)
-    - The ```next()``` method simply contains the logic for implementing our iterator. In this case, all state information is available in the ```Fibonacci``` structure
-    - We could have implemented another trait called ```IntoIterator``` to implement the ```into_iter()``` method for more specialized iterators
-    - https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=ab367dc2611e1b5a0bf98f1185b38f3f
-
-
+# Rust 반복자
+- ```Iterator``` 트레이트는 사용자 정의 타입에 대해 반복을 구현하는 데 사용됩니다 (https://doc.rust-lang.org/std/iter/trait.IntoIterator.html 참조).
+    - 예제에서는 1, 1, 2, ...로 시작하며 다음 숫자가 이전 두 숫자의 합인 피보나치 수열에 대한 반복자를 구현해 보겠습니다.
+    - ```Iterator```의 ```연관 타입```(```type Item = u32;```)은 반복자가 출력하는 타입(```u32```)을 정의합니다.
+    - ```next()``` 메서드는 단순히 반복자를 구현하는 로직을 포함합니다. 이 경우 모든 상태 정보는 ```Fibonacci``` 구조체에 저장됩니다.
+    - 더 특수화된 반복자를 위해 ```into_iter()``` 메서드를 구현하는 ```IntoIterator```라는 또 다른 트레이트를 구현할 수도 있었습니다.
+    - [▶ Rust Playground에서 시도해 보기](https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=ab367dc2611e1b5a0bf98f1185b38f3f)

@@ -1,35 +1,35 @@
-## Avoiding excessive clone()
+## 과도한 clone() 호출 피하기
 
-> **What you'll learn:** Why `.clone()` is a code smell in Rust, how to restructure ownership to eliminate unnecessary copies, and the specific patterns that signal an ownership design problem.
+> **학습 내용:** Rust에서 `.clone()`이 왜 코드 스멜(code smell)로 간주되는지, 불필요한 복사를 제거하기 위해 소유권 구조를 재설정하는 방법, 그리고 소유권 설계 문제를 나타내는 특정 패턴들을 배웁니다.
 
-- Coming from C++, `.clone()` feels like a safe default — "just copy it". But excessive cloning hides ownership problems and hurts performance.
-- **Rule of thumb**: If you're cloning to satisfy the borrow checker, you probably need to restructure ownership instead.
+- C++에서 온 개발자에게 `.clone()`은 "그냥 복사하면 된다"는 식의 안전한 기본 선택처럼 느껴질 수 있습니다. 하지만 과도한 클로닝(cloning)은 소유권 문제를 숨기고 성능을 저하시킵니다.
+- **경험 법칙 (Rule of thumb)**: 빌림 검사기(borrow checker)를 만족시키기 위해 clone을 사용하고 있다면, 아마도 소유권 구조를 재설정해야 할 시점일 것입니다.
 
-### When clone() is wrong
+### clone()이 잘못 사용되는 경우
 
 ```rust
-// BAD: Cloning a String just to pass it to a function that only reads it
-fn log_message(msg: String) {  // Takes ownership unnecessarily
-    println!("[LOG] {}", msg);
+// 나쁜 예: 단순히 읽기만 하는 함수에 전달하기 위해 String을 복사함
+fn log_message(msg: String) {  // 불필요하게 소유권을 가져갑니다.
+    println!("[로그] {}", msg);
 }
-let message = String::from("GPU test passed");
-log_message(message.clone());  // Wasteful: allocates a whole new String
-log_message(message);           // Original consumed — clone was pointless
+let message = String::from("GPU 테스트 통과");
+log_message(message.clone());  // 낭비: 완전히 새로운 String을 할당합니다.
+log_message(message);           // 원본이 소비됨 — 이전의 clone은 무의미했습니다.
 ```
 
 ```rust
-// GOOD: Accept a borrow — zero allocation
-fn log_message(msg: &str) {    // Borrows, doesn't own
-    println!("[LOG] {}", msg);
+// 좋은 예: 빌림(borrow)을 사용 — 할당 발생 안 함 (zero allocation)
+fn log_message(msg: &str) {    // 소유하지 않고 빌립니다.
+    println!("[로그] {}", msg);
 }
-let message = String::from("GPU test passed");
-log_message(&message);          // No clone, no allocation
-log_message(&message);          // Can call again — message not consumed
+let message = String::from("GPU 테스트 통과");
+log_message(&message);          // clone 없음, 할당 없음
+log_message(&message);          // 다시 호출 가능 — message가 소비되지 않음
 ```
 
-### Real example: returning `&str` instead of cloning
+### 실제 예시: clone 대신 `&str` 반환하기
 ```rust
-// Example: healthcheck.rs — returns a borrowed view, zero allocation
+// 예시: healthcheck.rs — 빌려온 뷰를 반환하며, 할당이 발생하지 않음
 pub fn serial_or_unknown(&self) -> &str {
     self.serial.as_deref().unwrap_or(UNKNOWN_VALUE)
 }
@@ -38,97 +38,94 @@ pub fn model_or_unknown(&self) -> &str {
     self.model.as_deref().unwrap_or(UNKNOWN_VALUE)
 }
 ```
-The C++ equivalent would return `const std::string&` or `std::string_view` — but in C++ neither is lifetime-checked. In Rust, the borrow checker guarantees the returned `&str` can't outlive `self`.
+C++라면 `const std::string&`이나 `std::string_view`를 반환했을 것입니다. 하지만 C++에서는 둘 다 수명 검사가 이루어지지 않습니다. Rust에서는 빌림 검사기가 반환된 `&str`이 `self`보다 오래 살아남을 수 없음을 보장합니다.
 
-### Real example: static string slices — no heap at all
+### 실제 예시: 정적 문자열 슬라이스 (Static string slices) — 힙 할당 없음
 ```rust
-// Example: healthcheck.rs — compile-time string tables
+// 예시: healthcheck.rs — 컴파일 타임 문자열 테이블
 const HBM_SCREEN_RECIPES: &[&str] = &[
     "hbm_ds_ntd", "hbm_ds_ntd_gfx", "hbm_dt_ntd", "hbm_dt_ntd_gfx",
     "hbm_burnin_8h", "hbm_burnin_24h",
 ];
 ```
-In C++ this would typically be `std::vector<std::string>` (heap-allocated on first use). Rust's `&'static [&'static str]` lives in read-only memory — zero runtime cost.
+C++에서는 보통 `std::vector<std::string>`을 사용하며 첫 사용 시 힙에 할당될 것입니다. Rust의 `&'static [&'static str]`은 읽기 전용 메모리에 위치하며 런타임 비용이 전혀 없습니다.
 
-### When clone() IS appropriate
+### clone()이 적절한 경우
 
-| **Situation** | **Why clone is OK** | **Example** |
+| **상황** | **clone이 괜찮은 이유** | **예시** |
 |--------------|--------------------|-----------|
-| `Arc::clone()` for threading | Bumps ref count (~1 ns), doesn't copy data | `let flag = stop_flag.clone();` |
-| Moving data into a spawned thread | Thread needs its own copy | `let ctx = ctx.clone(); thread::spawn(move \|\| { ... })` |
-| Extracting from `&self` fields | Can't move out of a borrow | `self.name.clone()` when returning owned `String` |
-| Small `Copy` types wrapped in `Option` | `.copied()` is clearer than `.clone()` | `opt.get(0).copied()` for `Option<&u32>` → `Option<u32>` |
+| 스레딩을 위한 `Arc::clone()` | 참조 횟수만 증가시킴 (~1 ns), 데이터를 복사하지 않음 | `let flag = stop_flag.clone();` |
+| 생성된 스레드로 데이터를 이동할 때 | 스레드가 자신만의 복사본을 필요로 함 | `let ctx = ctx.clone(); thread::spawn(move || { ... })` |
+| `&self` 필드에서 값을 추출할 때 | 빌려온 상태에서 값을 이동(move)시킬 수 없음 | 소유권이 있는 `String`을 반환할 때의 `self.name.clone()` |
+| `Option`으로 감싸진 작은 `Copy` 타입 | `.clone()`보다 `.copied()`가 더 명확함 | `Option<&u32>`를 `Option<u32>`로 바꿀 때의 `opt.get(0).copied()` |
 
-### Real example: Arc::clone for thread sharing
+### 실제 예시: 스레드 공유를 위한 Arc::clone
 ```rust
-// Example: workload.rs — Arc::clone is cheap (ref count bump)
+// 예시: workload.rs — Arc::clone은 비용이 저렴함 (참조 횟수 증가)
 let stop_flag = Arc::new(AtomicBool::new(false));
-let stop_flag_clone = stop_flag.clone();   // ~1 ns, no data copied
-let ctx_clone = ctx.clone();               // Clone context for move into thread
+let stop_flag_clone = stop_flag.clone();   // 약 1 ns, 데이터 복사 없음
+let ctx_clone = ctx.clone();               // 스레드로 이동시키기 위해 컨텍스트 복제
 
 let sensor_handle = thread::spawn(move || {
-    // ...uses stop_flag_clone and ctx_clone
+    // ... stop_flag_clone과 ctx_clone을 사용합니다.
 });
 ```
 
-### Checklist: Should I clone?
-1. **Can I accept `&str` / `&T` instead of `String` / `T`?** → Borrow, don't clone
-2. **Can I restructure to avoid needing two owners?** → Pass by reference or use scopes
-3. **Is this `Arc::clone()`?** → That's fine, it's O(1)
-4. **Am I moving data into a thread/closure?** → Clone is necessary
-5. **Am I cloning in a hot loop?** → Profile and consider borrowing or `Cow<T>`
+### 체크리스트: clone을 해야 할까요?
+1. **`String` / `T` 대신 `&str` / `&T`를 받을 수 있나요?** → 복제하지 말고 빌리십시오.
+2. **두 명의 소유자가 필요 없도록 구조를 변경할 수 있나요?** → 참조로 전달하거나 스코프(scope)를 활용하십시오.
+3. **이것이 `Arc::clone()`인가요?** → 괜찮습니다. O(1) 연산입니다.
+4. **데이터를 스레드나 클로저로 이동시키고 있나요?** → clone이 필요합니다.
+5. **빈번하게 호출되는 루프(hot loop) 안에서 clone을 하고 있나요?** → 프로파일링을 해보고 빌림이나 `Cow<T>` 사용을 고려하십시오.
 
 ----
 
-## `Cow<'a, T>`: Clone-on-Write — borrow when you can, clone when you must
+## `Cow<'a, T>`: 쓰기 시 복제 (Clone-on-Write) — 가능하면 빌리고, 필요할 때만 복제하기
 
-`Cow` (Clone on Write) is an enum that holds **either** a borrowed reference **or**
-an owned value. It's the Rust equivalent of "avoid allocation when possible, but
-allocate if you need to modify." C++ has no direct equivalent — the closest is a function
-that returns `const std::string&` sometimes and `std::string` other times.
+`Cow` (Clone on Write)는 **빌려온 참조** 또는 **소유한 값** 중 하나를 가질 수 있는 열거형입니다. 이는 Rust에서 "가능한 경우 할당을 피하되, 수정이 필요한 경우에만 할당한다"는 개념을 구현한 것입니다. C++에는 직접적인 대응물이 없으며, 상황에 따라 `const std::string&` 또는 `std::string`을 반환하는 함수와 가장 비슷합니다.
 
-### Why `Cow` exists
+### `Cow`가 존재하는 이유
 
 ```rust
-// Without Cow — you must choose: always borrow OR always clone
-fn normalize(s: &str) -> String {          // Always allocates!
+// Cow가 없는 경우 — 항상 빌리거나 항상 복제하는 것 중 하나를 선택해야 합니다.
+fn normalize(s: &str) -> String {          // 항상 할당이 발생합니다!
     if s.contains(' ') {
-        s.replace(' ', "_")               // New String (allocation needed)
+        s.replace(' ', "_")               // 새로운 String (할당 필요)
     } else {
-        s.to_string()                     // Unnecessary allocation!
+        s.to_string()                     // 불필요한 할당!
     }
 }
 
-// With Cow — borrow when unchanged, allocate only when modified
+// Cow를 사용하는 경우 — 변경되지 않았을 때는 빌리고, 수정되었을 때만 할당합니다.
 use std::borrow::Cow;
 
 fn normalize(s: &str) -> Cow<'_, str> {
     if s.contains(' ') {
-        Cow::Owned(s.replace(' ', "_"))    // Allocates (must modify)
+        Cow::Owned(s.replace(' ', "_"))    // 할당 발생 (수정 필요)
     } else {
-        Cow::Borrowed(s)                   // Zero allocation (passthrough)
+        Cow::Borrowed(s)                   // 할당 없음 (그대로 전달)
     }
 }
 ```
 
-### How `Cow` works
+### `Cow` 작동 방식
 
 ```rust
 use std::borrow::Cow;
 
-// Cow<'a, str> is essentially:
+// Cow<'a, str>은 본질적으로 다음과 같습니다:
 // enum Cow<'a, str> {
-//     Borrowed(&'a str),     // Zero-cost reference
-//     Owned(String),          // Heap-allocated owned value
+//     Borrowed(&'a str),     // 비용 없는 참조
+//     Owned(String),          // 힙에 할당된 소유권이 있는 값
 // }
 
 fn greet(name: &str) -> Cow<'_, str> {
     if name.is_empty() {
-        Cow::Borrowed("stranger")         // Static string — no allocation
+        Cow::Borrowed("stranger")         // 정적 문자열 — 할당 없음
     } else if name.starts_with(' ') {
-        Cow::Owned(name.trim().to_string()) // Modified — allocation needed
+        Cow::Owned(name.trim().to_string()) // 수정됨 — 할당 필요
     } else {
-        Cow::Borrowed(name)               // Passthrough — no allocation
+        Cow::Borrowed(name)               // 그대로 전달 — 할당 없음
     }
 }
 
@@ -137,62 +134,57 @@ fn main() {
     let g2 = greet("");          // Cow::Borrowed("stranger")
     let g3 = greet(" Bob ");     // Cow::Owned("Bob")
     
-    // Cow<str> implements Deref<Target = str>, so you can use it as &str:
-    println!("Hello, {g1}!");    // Works — Cow auto-derefs to &str
+    // Cow<str>은 Deref<Target = str>를 구현하므로 &str처럼 사용할 수 있습니다.
+    println!("Hello, {g1}!");    // 작동함 — Cow가 자동으로 &str로 역참조(deref)됩니다.
     println!("Hello, {g2}!");
     println!("Hello, {g3}!");
 }
 ```
 
-### Real-world use case: config value normalization
+### 실제 활용 사례: 설정값 정규화
 
 ```rust
 use std::borrow::Cow;
 
-/// Normalize a SKU name: trim whitespace, lowercase.
-/// Returns Cow::Borrowed if already normalized (zero allocation).
+/// SKU 이름을 정규화합니다: 공백 제거, 소문자 변환.
+/// 이미 정규화되어 있다면 Cow::Borrowed를 반환합니다 (할당 없음).
 fn normalize_sku(sku: &str) -> Cow<'_, str> {
     let trimmed = sku.trim();
     if trimmed == sku && sku.chars().all(|c| c.is_lowercase() || !c.is_alphabetic()) {
-        Cow::Borrowed(sku)   // Already normalized — no allocation
+        Cow::Borrowed(sku)   // 이미 정규화됨 — 할당 없음
     } else {
-        Cow::Owned(trimmed.to_lowercase())  // Needs modification — allocate
+        Cow::Owned(trimmed.to_lowercase())  // 수정 필요 — 할당 발생
     }
 }
 
 fn main() {
-    let s1 = normalize_sku("server-x1");   // Borrowed — zero alloc
-    let s2 = normalize_sku("  Server-X1 "); // Owned — must allocate
+    let s1 = normalize_sku("server-x1");   // Borrowed — 할당 없음
+    let s2 = normalize_sku("  Server-X1 "); // Owned — 할당 필요
     println!("{s1}, {s2}"); // "server-x1, server-x1"
 }
 ```
 
-### When to use `Cow`
+### `Cow`를 사용하는 시점
 
-| **Situation** | **Use `Cow`?** |
+| **상황** | **Cow를 사용할까요?** |
 |--------------|---------------|
-| Function returns input unchanged most of the time | ✅ Yes — avoid unnecessary clones |
-| Parsing/normalizing strings (trim, lowercase, replace) | ✅ Yes — often input is already valid |
-| Always modifying — every code path allocates | ❌ No — just return `String` |
-| Simple pass-through (never modifies) | ❌ No — just return `&str` |
-| Data stored in a struct long-term | ❌ No — use `String` (owned) |
+| 함수가 대부분의 경우 입력값을 변경하지 않고 반환할 때 | ✅ 예 — 불필요한 clone 방지 |
+| 문자열 파싱 또는 정규화 (trim, 소문자 변환, 치환 등) | ✅ 예 — 입력값이 이미 유효한 경우가 많음 |
+| 항상 수정이 발생하여 모든 경로에서 할당이 일어날 때 | ❌ 아니요 — 그냥 `String`을 반환하십시오. |
+| 단순히 값을 전달만 하고 절대 수정하지 않을 때 | ❌ 아니요 — 그냥 `&str`을 반환하십시오. |
+| 구조체에 장기적으로 데이터를 저장할 때 | ❌ 아니요 — 소유권이 있는 `String`을 사용하십시오. |
 
-> **C++ comparison**: `Cow<str>` is like a function that returns `std::variant<std::string_view, std::string>`
-> — except with automatic deref and no boilerplate to access the value.
+> **C++ 비교**: `Cow<str>`은 자동 역참조 기능이 있고 값 접근을 위한 보일러플레이트 코드가 없는 `std::variant<std::string_view, std::string>`을 반환하는 함수와 비슷합니다.
 
 ----
 
-## `Weak<T>`: Breaking Reference Cycles — Rust's `weak_ptr`
+## `Weak<T>`: 참조 순환 끊기 — Rust의 `weak_ptr`
 
-`Weak<T>` is the Rust equivalent of C++ `std::weak_ptr<T>`. It holds a non-owning
-reference to an `Rc<T>` or `Arc<T>` value. The value can be deallocated while
-`Weak` references still exist — calling `upgrade()` returns `None` if the value is gone.
+`Weak<T>`는 C++의 `std::weak_ptr<T>`에 대응하는 Rust의 개념입니다. 이는 `Rc<T>` 또는 `Arc<T>` 값에 대한 소유하지 않는 참조를 유지합니다. `Weak` 참조가 남아 있더라도 원래 값은 할당 해제될 수 있으며, 값이 사라진 경우 `upgrade()`를 호출하면 `None`이 반환됩니다.
 
-### Why `Weak` exists
+### `Weak`가 존재하는 이유
 
-`Rc<T>` and `Arc<T>` create reference cycles if two values point to each
-other — neither ever reaches refcount 0, so neither is dropped (memory leak).
-`Weak` breaks the cycle:
+`Rc<T>`와 `Arc<T>`는 두 값이 서로를 가리킬 경우 참조 순환(reference cycle)을 생성합니다. 이 경우 참조 횟수가 절대 0이 되지 않아 둘 다 드롭되지 않고 메모리 누수가 발생합니다. `Weak`는 이 순환을 끊어줍니다.
 
 ```rust
 use std::rc::{Rc, Weak};
@@ -201,8 +193,8 @@ use std::cell::RefCell;
 #[derive(Debug)]
 struct Node {
     value: String,
-    parent: RefCell<Weak<Node>>,      // Weak — doesn't prevent parent from dropping
-    children: RefCell<Vec<Rc<Node>>>,  // Strong — parent owns children
+    parent: RefCell<Weak<Node>>,      // Weak — 부모가 드롭되는 것을 막지 않습니다.
+    children: RefCell<Vec<Rc<Node>>>,  // Strong — 부모가 자식을 소유합니다.
 }
 
 impl Node {
@@ -215,9 +207,9 @@ impl Node {
     }
 
     fn add_child(parent: &Rc<Node>, child: &Rc<Node>) {
-        // Child gets a weak reference to parent (no cycle)
+        // 자식은 부모에 대해 약한 참조(weak reference)를 가집니다 (순환 없음).
         *child.parent.borrow_mut() = Rc::downgrade(parent);
-        // Parent gets a strong reference to child
+        // 부모는 자식에 대해 강한 참조(strong reference)를 가집니다.
         parent.children.borrow_mut().push(Rc::clone(child));
     }
 }
@@ -227,24 +219,24 @@ fn main() {
     let child = Node::new("child");
     Node::add_child(&root, &child);
 
-    // Access parent from child via upgrade()
+    // upgrade()를 통해 자식에서 부모로 접근합니다.
     if let Some(parent) = child.parent.borrow().upgrade() {
-        println!("Child's parent: {}", parent.value); // "root"
+        println!("자식의 부모: {}", parent.value); // "root"
     }
     
-    println!("Root strong count: {}", Rc::strong_count(&root));  // 1
-    println!("Root weak count: {}", Rc::weak_count(&root));      // 1
+    println!("Root 강한 참조 횟수: {}", Rc::strong_count(&root));  // 1
+    println!("Root 약한 참조 횟수: {}", Rc::weak_count(&root));      // 1
 }
 ```
 
-### C++ comparison
+### C++ 비교
 
 ```cpp
-// C++ — weak_ptr to break shared_ptr cycle
+// C++ — shared_ptr 순환을 끊기 위한 weak_ptr
 struct Node {
     std::string value;
-    std::weak_ptr<Node> parent;                  // Weak — no ownership
-    std::vector<std::shared_ptr<Node>> children;  // Strong — owns children
+    std::weak_ptr<Node> parent;                  // Weak — 소유권 없음
+    std::vector<std::shared_ptr<Node>> children;  // Strong — 자식 소유
 
     static auto create(const std::string& v) {
         return std::make_shared<Node>(Node{v, {}, {}});
@@ -253,57 +245,55 @@ struct Node {
 
 auto root = Node::create("root");
 auto child = Node::create("child");
-child->parent = root;          // weak_ptr assignment
+child->parent = root;          // weak_ptr 대입
 root->children.push_back(child);
 
-if (auto p = child->parent.lock()) {   // lock() → shared_ptr or null
-    std::cout << "Parent: " << p->value << std::endl;
+if (auto p = child->parent.lock()) {   // lock() → shared_ptr 또는 null
+    std::cout << "부모: " << p->value << std::endl;
 }
 ```
 
-| C++ | Rust | Notes |
+| C++ | Rust | 참고 |
 |-----|------|-------|
-| `shared_ptr<T>` | `Rc<T>` (single-thread) / `Arc<T>` (multi-thread) | Same semantics |
-| `weak_ptr<T>` | `Weak<T>` from `Rc::downgrade()` / `Arc::downgrade()` | Same semantics |
-| `weak_ptr::lock()` → `shared_ptr` or null | `Weak::upgrade()` → `Option<Rc<T>>` | `None` if dropped |
-| `shared_ptr::use_count()` | `Rc::strong_count()` | Same meaning |
+| `shared_ptr<T>` | `Rc<T>` (단일 스레드) / `Arc<T>` (멀티 스레드) | 동일한 시맨틱 |
+| `weak_ptr<T>` | `Rc::downgrade()` / `Arc::downgrade()`를 통한 `Weak<T>` | 동일한 시맨틱 |
+| `weak_ptr::lock()` → `shared_ptr` 또는 null | `Weak::upgrade()` → `Option<Rc<T>>` | 드롭된 경우 `None` |
+| `shared_ptr::use_count()` | `Rc::strong_count()` | 동일한 의미 |
 
-### When to use `Weak`
+### `Weak`를 사용하는 시점
 
-| **Situation** | **Pattern** |
+| **상황** | **패턴** |
 |--------------|-----------|
-| Parent ↔ child tree relationships | Parent holds `Rc<Child>`, child holds `Weak<Parent>` |
-| Observer pattern / event listeners | Event source holds `Weak<Observer>`, observer holds `Rc<Source>` |
-| Cache that doesn't prevent deallocation | `HashMap<Key, Weak<Value>>` — entries go stale naturally |
-| Breaking cycles in graph structures | Cross-links use `Weak`, tree edges use `Rc`/`Arc` |
+| 부모 ↔ 자식 트리 관계 | 부모는 `Rc<Child>`, 자식은 `Weak<Parent>` 소유 |
+| 옵저버 패턴 / 이벤트 리스너 | 이벤트 소스는 `Weak<Observer>`, 옵저버는 `Rc<Source>` 소유 |
+| 할당 해제를 막지 않는 캐시 | `HashMap<Key, Weak<Value>>` — 항목이 자연스럽게 만료됨 |
+| 그래프 구조의 순환 끊기 | 교차 링크는 `Weak`, 트리 에지는 `Rc`/`Arc` 사용 |
 
-> **Prefer the arena pattern** (Case Study 2) over `Rc/Weak` for tree structures in
-> new code. `Vec<T>` + indices is simpler, faster, and has zero reference-counting
-> overhead. Use `Rc/Weak` when you need shared ownership with dynamic lifetimes.
+> 새로운 코드의 트리 구조에서는 `Rc/Weak`보다 **아레나(Arena) 패턴**(사례 연구 2)을 권장합니다. `Vec<T>`와 인덱스를 사용하는 것이 더 단순하고 빠르며 참조 횟수 계산 오버헤드가 없습니다. 동적인 수명을 가진 공유 소유권이 필요할 때만 `Rc/Weak`를 사용하십시오.
 
 ----
 
-## Copy vs Clone, PartialEq vs Eq — when to derive what
+## Copy 대 Clone, PartialEq 대 Eq — 언제 무엇을 derive 할 것인가
 
-- **Copy ≈ C++ trivially copyable (no custom copy ctor/dtor).** Types like `int`, `enum`, and simple POD structs — the compiler generates a bitwise `memcpy` automatically. In Rust, `Copy` is the same idea: assignment `let b = a;` does an implicit bitwise copy and both variables remain valid.
-- **Clone ≈ C++ copy constructor / `operator=` deep-copy.** When a C++ class has a custom copy constructor (e.g., to deep-copy a `std::vector` member), the equivalent in Rust is implementing `Clone`. You must call `.clone()` explicitly — Rust never hides an expensive copy behind `=`.
-- **Key distinction:** In C++, both trivial copies and deep copies happen implicitly via the same `=` syntax. Rust forces you to choose: `Copy` types copy silently (cheap), non-`Copy` types **move** by default, and you must opt in to an expensive duplicate with `.clone()`.
-- Similarly, C++ `operator==` doesn't distinguish between types where `a == a` always holds (like integers) and types where it doesn't (like `float` with NaN). Rust encodes this in `PartialEq` vs `Eq`.
+- **Copy ≈ C++의 trivially copyable (커스텀 복사 생성자/소멸자 없음).** `int`, `enum`, 단순한 POD 구조체와 같은 타입들입니다. 컴파일러가 비트 단위의 `memcpy`를 자동으로 생성합니다. Rust에서도 `Copy`는 동일한 개념입니다. `let b = a;` 대입 시 암시적으로 비트 단위 복사가 이루어지며 두 변수 모두 유효하게 남습니다.
+- **Clone ≈ C++의 복사 생성자 / `operator=` 깊은 복사 (deep-copy).** C++ 클래스에 커스텀 복사 생성자가 있는 경우(예: `std::vector` 멤버를 깊은 복사하는 경우), Rust에서는 `Clone`을 구현하는 것과 같습니다. 반드시 `.clone()`을 명시적으로 호출해야 합니다. Rust는 비용이 많이 드는 복사를 `=` 뒤에 숨기지 않습니다.
+- **핵심 차이점:** C++에서는 단순 복사와 깊은 복사 모두 동일한 `=` 문법을 통해 암시적으로 발생합니다. Rust는 선택을 강제합니다. `Copy` 타입은 조용히 복사(저비용)되고, `Copy`가 아닌 타입은 기본적으로 **이동(move)**하며, 비싼 복제가 필요한 경우 `.clone()`을 명시적으로 사용해야 합니다.
+- 마찬가지로 C++의 `operator==`는 `a == a`가 항상 성립하는 타입(정수 등)과 그렇지 않은 타입(NaN이 있는 `float` 등)을 구분하지 않습니다. Rust는 이를 `PartialEq`와 `Eq`로 구분하여 인코딩합니다.
 
-### Copy vs Clone
+### Copy 대 Clone
 
 | | **Copy** | **Clone** |
 |---|---------|----------|
-| **How it works** | Bitwise memcpy (implicit) | Custom logic (explicit `.clone()`) |
-| **When it happens** | On assignment: `let b = a;` | Only when you call `.clone()` |
-| **After copy/clone** | Both `a` and `b` are valid | Both `a` and `b` are valid |
-| **Without either** | `let b = a;` **moves** `a` (a is gone) | `let b = a;` **moves** `a` (a is gone) |
-| **Allowed for** | Types with no heap data | Any type |
-| **C++ analogy** | Trivially copyable / POD types (no custom copy ctor) | Custom copy constructor (deep copy) |
+| **작동 방식** | 비트 단위 memcpy (암시적) | 커스텀 로직 (명시적 `.clone()`) |
+| **발생 시점** | 대입 시: `let b = a;` | `.clone()` 호출 시에만 |
+| **복사/클론 후** | `a`와 `b` 모두 유효함 | `a`와 `b` 모두 유효함 |
+| **둘 다 없을 때** | `let b = a;`는 `a`를 **이동(move)**시킴 (`a`는 사라짐) | `let b = a;`는 `a`를 **이동(move)**시킴 (`a`는 사라짐) |
+| **허용 대상** | 힙 데이터가 없는 타입 | 모든 타입 |
+| **C++ 비유** | Trivially copyable / POD 타입 (커스텀 복사 생성자 없음) | 커스텀 복사 생성자 (깊은 복사) |
 
-### Real example: Copy — simple enums
+### 실제 예시: Copy — 단순 열거형
 ```rust
-// From fan_diag/src/sensor.rs — all unit variants, fits in 1 byte
+// fan_diag/src/sensor.rs — 모든 유닛 변형이 1바이트에 들어감
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum FanStatus {
     #[default]
@@ -316,13 +306,13 @@ pub enum FanStatus {
 }
 
 let status = FanStatus::Normal;
-let copy = status;   // Implicit copy — status is still valid
-println!("{:?} {:?}", status, copy);  // Both work
+let copy = status;   // 암시적 복사 — status는 여전히 유효함
+println!("{:?} {:?}", status, copy);  // 둘 다 작동함
 ```
 
-### Real example: Copy — enum with integer payloads
+### 실제 예시: Copy — 정수 페이로드가 있는 열거형
 ```rust
-// Example: healthcheck.rs — u32 payloads are Copy, so the whole enum is too
+// 예시: healthcheck.rs — u32 페이로드는 Copy이므로 열거형 전체도 Copy 가능
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HealthcheckStatus {
     Pass,
@@ -334,41 +324,41 @@ pub enum HealthcheckStatus {
 }
 ```
 
-### Real example: Clone only — struct with heap data
+### 실제 예시: Clone 전용 — 힙 데이터가 있는 구조체
 ```rust
-// Example: components.rs — String prevents Copy
+// 예시: components.rs — String 필드가 Copy를 막음
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FruData {
     pub technology: DeviceTechnology,
-    pub physical_location: String,      // ← String: heap-allocated, can't Copy
+    pub physical_location: String,      // ← String: 힙에 할당되므로 Copy 불가
     pub expected: bool,
     pub removable: bool,
 }
-// let a = fru_data;   → MOVES (a is gone)
-// let a = fru_data.clone();  → CLONES (fru_data still valid, new heap allocation)
+// let a = fru_data;   → 이동(MOVE) (fru_data는 사라짐)
+// let a = fru_data.clone();  → 복제(CLONE) (fru_data는 여전히 유효, 새로운 힙 할당 발생)
 ```
 
-### The rule: Can it be Copy?
+### 규칙: Copy가 가능할까요?
 ```text
-Does the type contain String, Vec, Box, HashMap,
-Rc, Arc, or any other heap-owning type?
-    YES → Clone only (cannot be Copy)
-    NO  → You CAN derive Copy (and should, if the type is small)
+해당 타입에 String, Vec, Box, HashMap,
+Rc, Arc 또는 다른 힙 소유 타입이 포함되어 있습니까?
+    예 → Clone만 가능 (Copy 불가)
+    아니요 → Copy를 derive 할 수 있음 (타입이 작다면 권장됨)
 ```
 
-### PartialEq vs Eq
+### PartialEq 대 Eq
 
 | | **PartialEq** | **Eq** |
 |---|--------------|-------|
-| **What it gives you** | `==` and `!=` operators | Marker: "equality is reflexive" |
-| **Reflexive? (a == a)** | Not guaranteed | **Guaranteed** |
-| **Why it matters** | `f32::NAN != f32::NAN` | `HashMap` keys **require** `Eq` |
-| **When to derive** | Almost always | When the type has no `f32`/`f64` fields |
-| **C++ analogy** | `operator==` | No direct equivalent (C++ doesn't check) |
+| **기능** | `==` 및 `!=` 연산자 제공 | "동등성은 반사적(reflexive)"이라는 마커 |
+| **반사성 (a == a)?** | 보장되지 않음 | **보장됨** |
+| **중요한 이유** | `f32::NAN != f32::NAN` | `HashMap` 키는 `Eq`를 **요구함** |
+| **derive 시점** | 거의 항상 | `f32`/`f64` 필드가 없는 경우 |
+| **C++ 비유** | `operator==` | 직접적인 대응물 없음 (C++는 확인하지 않음) |
 
-### Real example: Eq — used as HashMap key
+### 실제 예시: Eq — HashMap 키로 사용됨
 ```rust
-// From hms_trap/src/cpu_handler.rs — Hash requires Eq
+// hms_trap/src/cpu_handler.rs — Hash는 Eq를 요구함
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CpuFaultType {
     InvalidFaultType,
@@ -377,100 +367,98 @@ pub enum CpuFaultType {
     CpuC2CUceFatalErr,
     // ...
 }
-// Used as: HashMap<CpuFaultType, FaultHandler>
-// HashMap keys must be Eq + Hash — PartialEq alone won't compile
+// 사용 예: HashMap<CpuFaultType, FaultHandler>
+// HashMap 키는 반드시 Eq + Hash를 구현해야 함 — PartialEq만으로는 컴파일되지 않음
 ```
 
-### Real example: No Eq possible — type contains f32
+### 실제 예시: Eq가 불가능한 경우 — f32 포함
 ```rust
-// Example: types.rs — f32 prevents Eq
+// 예시: types.rs — f32가 Eq를 막음
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TemperatureSensors {
-    pub warning_threshold: Option<f32>,   // ← f32 has NaN ≠ NaN
-    pub critical_threshold: Option<f32>,  // ← can't derive Eq
+    pub warning_threshold: Option<f32>,   // ← f32는 NaN ≠ NaN 성립
+    pub critical_threshold: Option<f32>,  // ← Eq를 derive 할 수 없음
     pub sensor_names: Vec<String>,
 }
-// Cannot be used as HashMap key. Cannot derive Eq.
-// Because: f32::NAN == f32::NAN is false, violating reflexivity.
+// HashMap 키로 사용할 수 없음. Eq를 derive 할 수 없음.
+// 이유: f32::NAN == f32::NAN이 거짓이 되어 반사성 원칙을 위반하기 때문.
 ```
 
-### PartialOrd vs Ord
+### PartialOrd 대 Ord
 
 | | **PartialOrd** | **Ord** |
 |---|---------------|--------|
-| **What it gives you** | `<`, `>`, `<=`, `>=` | `.sort()`, `BTreeMap` keys |
-| **Total ordering?** | No (some pairs may be incomparable) | **Yes** (every pair is comparable) |
-| **f32/f64?** | PartialOrd only (NaN breaks ordering) | Cannot derive Ord |
+| **기능** | `<`, `>`, `<=`, `>=` | `.sort()`, `BTreeMap` 키 |
+| **전체 순서 (Total ordering)?** | 아니요 (비교 불가능한 쌍이 있을 수 있음) | **예** (모든 쌍을 비교 가능) |
+| **f32/f64 포함 여부** | PartialOrd만 가능 (NaN이 순서를 깨뜨림) | Ord를 derive 할 수 없음 |
 
-### Real example: Ord — severity ranking
+### 실제 예시: Ord — 심각도 순위
 ```rust
-// From hms_trap/src/fault.rs — variant order defines severity
+// hms_trap/src/fault.rs — 변형의 선언 순서가 심각도를 정의함
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FaultSeverity {
-    Info,      // lowest  (discriminant 0)
-    Warning,   //         (discriminant 1)
-    Error,     //         (discriminant 2)
-    Critical,  // highest (discriminant 3)
+    Info,      // 가장 낮음 (판별값 0)
+    Warning,   //           (판별값 1)
+    Error,     //           (판별값 2)
+    Critical,  // 가장 높음 (판별값 3)
 }
-// FaultSeverity::Info < FaultSeverity::Critical → true
-// Enables: if severity >= FaultSeverity::Error { escalate(); }
+// FaultSeverity::Info < FaultSeverity::Critical → 참
+// 활용 예: if severity >= FaultSeverity::Error { escalate(); }
 ```
 
-### Real example: Ord — diagnostic levels for comparison
+### 실제 예시: Ord — 비교를 위한 진단 레벨
 ```rust
-// Example: orchestration.rs
+// 예시: orchestration.rs
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum GpuDiagLevel {
     #[default]
-    Quick,     // lowest
+    Quick,     // 가장 낮음
     Standard,
     Extended,
-    Full,      // highest
+    Full,      // 가장 높음
 }
-// Enables: if requested_level >= GpuDiagLevel::Extended { run_extended_tests(); }
+// 활용 예: if requested_level >= GpuDiagLevel::Extended { run_extended_tests(); }
 ```
 
-### Derive decision tree
+### Derive 결정 트리
 
 ```text
-                        Your new type
+                        새로운 타입
                             │
-                   Contains String/Vec/Box?
+                   String/Vec/Box를 포함합니까?
                       /              \
-                    YES                NO
+                    예                아니요
                      │                  │
-              Clone only          Clone + Copy
+              Clone만 가능         Clone + Copy
                      │                  │
-              Contains f32/f64?    Contains f32/f64?
+              f32/f64를 포함합니까?   f32/f64를 포함합니까?
                 /          \         /          \
-              YES           NO     YES           NO
+              예            아니요     예            아니요
                │             │      │             │
          PartialEq       PartialEq  PartialEq  PartialEq
-         only            + Eq       only       + Eq
+         만 가능         + Eq       만 가능    + Eq
                           │                      │
-                    Need sorting?           Need sorting?
+                    정렬이 필요한가요?      정렬이 필요한가요?
                       /       \               /       \
-                    YES        NO            YES        NO
+                    예        아니요           예        아니요
                      │          │              │          │
-               PartialOrd    Done        PartialOrd    Done
-               + Ord                     + Ord
+               PartialOrd      완료         PartialOrd    완료
+               + Ord                        + Ord
                      │                        │
-               Need as                  Need as
-               map key?                 map key?
-                  │                        │
-                + Hash                   + Hash
+               맵 키로 사용                  맵 키로 사용
+               해야 하나요?                  해야 하나요?
+                  │                            │
+                + Hash                       + Hash
 ```
 
-### Quick reference: common derive combos from production Rust code
+### 빠른 참조: 실무 Rust 코드의 일반적인 derive 조합
 
-| **Type category** | **Typical derive** | **Example** |
+| **타입 카테고리** | **일반적인 derive** | **예시** |
 |-------------------|--------------------|------------|
-| Simple status enum | `Copy, Clone, PartialEq, Eq, Default` | `FanStatus` |
-| Enum used as HashMap key | `Copy, Clone, PartialEq, Eq, Hash` | `CpuFaultType`, `SelComponent` |
-| Sortable severity enum | `Copy, Clone, PartialEq, Eq, PartialOrd, Ord` | `FaultSeverity`, `GpuDiagLevel` |
-| Data struct with Strings | `Clone, Debug, Serialize, Deserialize` | `FruData`, `OverallSummary` |
-| Serializable config | `Clone, Debug, Default, Serialize, Deserialize` | `DiagConfig` |
+| 단순 상태 열거형 | `Copy, Clone, PartialEq, Eq, Default` | `FanStatus` |
+| HashMap 키로 쓰이는 열거형 | `Copy, Clone, PartialEq, Eq, Hash` | `CpuFaultType`, `SelComponent` |
+| 정렬 가능한 심각도 열거형 | `Copy, Clone, PartialEq, Eq, PartialOrd, Ord` | `FaultSeverity`, `GpuDiagLevel` |
+| String을 포함한 데이터 구조체 | `Clone, Debug, Serialize, Deserialize` | `FruData`, `OverallSummary` |
+| 직렬화 가능한 설정값 | `Clone, Debug, Default, Serialize, Deserialize` | `DiagConfig` |
 
 ----
-
-

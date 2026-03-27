@@ -1,125 +1,125 @@
-## Essential Rust Tooling for C# Developers
+## C# 개발자를 위한 필수 Rust 도구 (Essential Rust Tooling for C# Developers)
 
-> **What you'll learn:** Rust's development tools mapped to their C# equivalents — Clippy (Roslyn analyzers),
-> rustfmt (dotnet format), cargo doc (XML docs), cargo watch (dotnet watch), and VS Code extensions.
+> **학습 내용:** C#의 개발 도구에 대응하는 Rust의 도구들을 알아봅니다 — Clippy (Roslyn 분석기),
+> rustfmt (dotnet format), cargo doc (XML 문서), cargo watch (dotnet watch), 그리고 VS Code 확장 프로그램.
 >
-> **Difficulty:** 🟢 Beginner
+> **난이도:** 🟢 초급
 
-### Tool Comparison
+### 도구 비교 (Tool Comparison)
 
-| C# Tool | Rust Equivalent | Install | Purpose |
+| C# 도구 | Rust 대응 도구 | 설치 방법 | 용도 |
 |---------|----------------|---------|---------|
-| Roslyn analyzers | **Clippy** | `rustup component add clippy` | Lint + style suggestions |
-| `dotnet format` | **rustfmt** | `rustup component add rustfmt` | Auto-formatting |
-| XML doc comments | **`cargo doc`** | Built-in | Generate HTML docs |
-| OmniSharp / Roslyn | **rust-analyzer** | VS Code extension | IDE support |
-| `dotnet watch` | **cargo-watch** | `cargo install cargo-watch` | Auto-rebuild on save |
-| — | **cargo-expand** | `cargo install cargo-expand` | See macro expansion |
-| `dotnet audit` | **cargo-audit** | `cargo install cargo-audit` | Security vulnerability scan |
+| Roslyn 분석기 | **Clippy** | `rustup component add clippy` | 린트(Lint) + 스타일 제안 |
+| `dotnet format` | **rustfmt** | `rustup component add rustfmt` | 자동 포맷팅 |
+| XML 문서 주석 | **`cargo doc`** | 기본 내장 | HTML 문서 생성 |
+| OmniSharp / Roslyn | **rust-analyzer** | VS Code 확장 | IDE 지원 |
+| `dotnet watch` | **cargo-watch** | `cargo install cargo-watch` | 저장 시 자동 재빌드 |
+| — | **cargo-expand** | `cargo install cargo-expand` | 매크로 확장 결과 확인 |
+| `dotnet audit` | **cargo-audit** | `cargo install cargo-audit` | 보안 취약점 스캔 |
 
-### Clippy: Your Automated Code Reviewer
+### Clippy: 자동화된 코드 검토 도구 (Automated Code Reviewer)
 ```bash
-# Run Clippy on your project
+# 프로젝트에서 Clippy 실행
 cargo clippy
 
-# Treat warnings as errors (CI/CD)
+# 경고를 에러로 처리 (CI/CD용)
 cargo clippy -- -D warnings
 
-# Auto-fix suggestions
+# 제안사항 자동 수정
 cargo clippy --fix
 ```
 
 ```rust
-// Clippy catches hundreds of anti-patterns:
+// Clippy는 수백 가지의 안티 패턴을 찾아냅니다:
 
-// Before Clippy:
-if x == true { }           // warning: equality check with bool
-let _ = vec.len() == 0;    // warning: use .is_empty() instead
-for i in 0..vec.len() { }  // warning: use .iter().enumerate()
+// Clippy 적용 전:
+if x == true { }           // 경고: bool 값과의 비교 체크
+let _ = vec.len() == 0;    // 경고: 대신 .is_empty() 사용 권장
+for i in 0..vec.len() { }  // 경고: 대신 .iter().enumerate() 사용 권장
 
-// After Clippy suggestions:
+// Clippy 제안 적용 후:
 if x { }
 let _ = vec.is_empty();
 for (i, item) in vec.iter().enumerate() { }
 ```
 
-### rustfmt: Consistent Formatting
+### rustfmt: 일관된 포맷팅 (Consistent Formatting)
 ```bash
-# Format all files
+# 모든 파일 포맷팅
 cargo fmt
 
-# Check formatting without changing (CI/CD)
+# 변경 없이 포맷팅 상태만 확인 (CI/CD용)
 cargo fmt -- --check
 ```
 
 ```toml
-# rustfmt.toml — customize formatting (like .editorconfig)
+# rustfmt.toml — 포맷팅 설정 커스터마이징 (.editorconfig와 유사)
 max_width = 100
 tab_spaces = 4
 use_field_init_shorthand = true
 ```
 
-### cargo doc: Documentation Generation
+### cargo doc: 문서 생성 (Documentation Generation)
 ```bash
-# Generate and open docs (including dependencies)
+# 문서 생성 및 열기 (의존성 라이브러리 포함)
 cargo doc --open
 
-# Run documentation tests
+# 문서 내 테스트 코드 실행
 cargo test --doc
 ```
 
 ```rust
-/// Calculate the area of a circle.
+/// 원의 넓이를 계산합니다.
 ///
-/// # Arguments
-/// * `radius` - The radius of the circle (must be non-negative)
+/// # 인자 (Arguments)
+/// * `radius` - 원의 반지름 (음수여서는 안 됩니다)
 ///
-/// # Examples
+/// # 예제 (Examples)
 /// ```
 /// let area = my_crate::circle_area(5.0);
 /// assert!((area - 78.54).abs() < 0.01);
 /// ```
 ///
-/// # Panics
-/// Panics if `radius` is negative.
+/// # 패닉 (Panics)
+/// `radius`가 음수인 경우 패닉이 발생합니다.
 pub fn circle_area(radius: f64) -> f64 {
-    assert!(radius >= 0.0, "radius must be non-negative");
+    assert!(radius >= 0.0, "반지름은 음수일 수 없습니다");
     std::f64::consts::PI * radius * radius
 }
-// The code in /// ``` blocks is compiled and run during `cargo test`!
+// /// ``` 블록 안의 코드는 `cargo test` 실행 시 함께 컴파일되고 실행됩니다!
 ```
 
-### cargo watch: Auto-Rebuild
+### cargo watch: 자동 재빌드 (Auto-Rebuild)
 ```bash
-# Rebuild on file changes (like dotnet watch)
-cargo watch -x check          # Type-check only (fastest)
-cargo watch -x test           # Run tests on save
-cargo watch -x 'run -- args'  # Run program on save
-cargo watch -x clippy         # Lint on save
+# 파일 변경 시 자동 재빌드 (dotnet watch와 유사)
+cargo watch -x check          # 타입 체크만 수행 (가장 빠름)
+cargo watch -x test           # 저장 시 테스트 실행
+cargo watch -x 'run -- args'  # 저장 시 프로그램 실행
+cargo watch -x clippy         # 저장 시 린트 실행
 ```
 
-### cargo expand: See What Macros Generate
+### cargo expand: 매크로 생성 결과 확인 (See What Macros Generate)
 ```bash
-# See the expanded output of derive macros
-cargo expand --lib            # Expand lib.rs
-cargo expand module_name      # Expand specific module
+# derive 매크로 등으로 확장된 결과물 확인
+cargo expand --lib            # lib.rs 확장
+cargo expand module_name      # 특정 모듈 확장
 ```
 
-### Recommended VS Code Extensions
+### 권장 VS Code 확장 프로그램 (Recommended VS Code Extensions)
 
-| Extension | Purpose |
+| 확장 프로그램 | 용도 |
 |-----------|---------|
-| **rust-analyzer** | Code completion, inline errors, refactoring |
-| **CodeLLDB** | Debugger (like Visual Studio debugger) |
-| **Even Better TOML** | Cargo.toml syntax highlighting |
-| **crates** | Show latest crate versions in Cargo.toml |
-| **Error Lens** | Inline error/warning display |
+| **rust-analyzer** | 코드 완성, 인라인 에러 표시, 리팩토링 |
+| **CodeLLDB** | 디버거 (Visual Studio 디버거와 유사) |
+| **Even Better TOML** | Cargo.toml 구문 강조 |
+| **crates** | Cargo.toml에서 최신 크레이트 버전 표시 |
+| **Error Lens** | 에러/경고를 인라인으로 즉시 표시 |
 
 ***
 
-For deeper exploration of advanced topics mentioned in this guide, see the companion training documents:
+이 가이드에서 언급된 고급 주제들에 대해 더 자세히 알아보려면 다음 교육 문서를 참조하십시오:
 
-- **[Rust Patterns](../../rust-patterns-book/src/SUMMARY.md)** — Pin projections, custom allocators, arena patterns, lock-free data structures, and advanced unsafe patterns
-- **[Async Rust Training](../../async-book/src/SUMMARY.md)** — Deep dive into tokio, async cancellation safety, stream processing, and production async architectures
-- **[Rust Training for C++ Developers](../../c-cpp-book/src/SUMMARY.md)** — Useful if your team also has C++ experience; covers move semantics mapping, RAII differences, and template vs generics
-- **[Rust Training for C Developers](../../c-cpp-book/src/SUMMARY.md)** — Relevant for interop scenarios; covers FFI patterns, embedded Rust debugging, and `no_std` programming
+- **[Rust 패턴 (Rust Patterns)](../../rust-patterns-book/src/SUMMARY.md)** — 핀 프로젝션(Pin projections), 커스텀 할당자(custom allocators), 아레나 패턴(arena patterns), 락-프리(lock-free) 데이터 구조 및 고급 unsafe 패턴
+- **[Async Rust 교육 (Async Rust Training)](../../async-book/src/SUMMARY.md)** — tokio 심층 분석, 비동기 취소 안전성(async cancellation safety), 스트림 처리 및 프로덕션용 비동기 아키텍처
+- **[C++ 개발자를 위한 Rust 교육 (Rust Training for C++ Developers)](../../c-cpp-book/src/SUMMARY.md)** — 팀에 C++ 경험자가 있는 경우 유용합니다. 이동 의미론(move semantics) 매핑, RAII 차이점, 템플릿 vs 제네릭 등을 다룹니다.
+- **[C 개발자를 위한 Rust 교육 (Rust Training for C Developers)](../../c-cpp-book/src/SUMMARY.md)** — 상호 운용성(interop) 시나리오에 적합합니다. FFI 패턴, 임베디드 Rust 디버깅 및 `no_std` 프로그래밍을 다룹니다.

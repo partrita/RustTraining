@@ -1,19 +1,19 @@
-## Capstone Project: Build a CLI Weather Tool
+## 캡스톤 프로젝트: CLI 날씨 도구 만들기 (Capstone Project: Build a CLI Weather Tool)
 
-> **What you'll learn:** How to combine everything — structs, traits, error handling, async, modules,
-> serde, and CLI argument parsing — into a working Rust application. This mirrors the kind of tool
-> a C# developer would build with `HttpClient`, `System.Text.Json`, and `System.CommandLine`.
+> **학습 내용:** 지금까지 배운 모든 것 — 구조체, 트레이트, 에러 처리, 비동기, 모듈,
+> serde, 그리고 CLI 인자 파싱 — 을 결합하여 실제 작동하는 Rust 애플리케이션을 만드는 방법을 알아봅니다.
+> 이 프로젝트는 C# 개발자가 `HttpClient`, `System.Text.Json`, `System.CommandLine`을 사용하여 만드는 도구와 유사한 형태가 될 것입니다.
 >
-> **Difficulty:** 🟡 Intermediate
+> **난이도:** 🟡 중급
 
-This capstone pulls together concepts from every part of the book. You'll build `weather-cli`, a command-line tool that fetches weather data from an API and displays it. The project is structured as a mini-crate with proper module layout, error types, and tests.
+이 캡스톤 프로젝트는 이 책의 모든 파트에서 다룬 개념들을 하나로 모으는 과정입니다. API에서 날씨 데이터를 가져와 표시하는 커맨드 라인 도구인 `weather-cli`를 만들어 보겠습니다. 이 프로젝트는 적절한 모듈 레이아웃, 에러 타입, 그리고 테스트를 갖춘 미니 크레이트 형태로 구성됩니다.
 
-### Project Overview
+### 프로젝트 개요 (Project Overview)
 
 ```mermaid
 graph TD
     CLI["main.rs\nclap CLI parser"] --> Client["client.rs\nreqwest + tokio"]
-    Client -->|"HTTP GET"| API["Weather API"]
+    Client -->|"HTTP GET"| API["날씨 API"]
     Client -->|"JSON → struct"| Model["weather.rs\nserde Deserialize"]
     Model --> Display["display.rs\nfmt::Display"]
     CLI --> Err["error.rs\nthiserror"]
@@ -24,35 +24,35 @@ graph TD
     style Model fill:#c8e6c9,color:#000
 ```
 
-**What you'll build:**
+**완성될 모습:**
 ```
 $ weather-cli --city "Seattle"
 🌧  Seattle: 12°C, Overcast clouds
     Humidity: 82%  Wind: 5.4 m/s
 ```
 
-**Concepts exercised:**
-| Book Chapter | Concept Used Here |
+**사용되는 개념들:**
+| 관련 장 | 사용된 개념 |
 |---|---|
-| Ch05 (Structs) | `WeatherReport`, `Config` data types |
-| Ch08 (Modules) | `src/lib.rs`, `src/client.rs`, `src/display.rs` |
-| Ch09 (Errors) | Custom `WeatherError` with `thiserror` |
-| Ch10 (Traits) | `Display` impl for formatted output |
-| Ch11 (From/Into) | JSON deserialization via `serde` |
-| Ch12 (Iterators) | Processing API response arrays |
-| Ch13 (Async) | `reqwest` + `tokio` for HTTP calls |
-| Ch14-1 (Testing) | Unit tests + integration test |
+| 제5장 (구조체) | `WeatherReport`, `Config` 데이터 타입 |
+| 제8장 (모듈) | `src/lib.rs`, `src/client.rs`, `src/display.rs` |
+| 제9장 (에러) | `thiserror`를 사용한 커스텀 `WeatherError` |
+| 제10장 (트레이트) | 포맷팅된 출력을 위한 `Display` 구현 |
+| 제11장 (From/Into) | `serde`를 통한 JSON 역직렬화(Deserialization) |
+| 제12장 (반복자) | API 응답 배열 처리 |
+| 제13장 (비동기) | HTTP 호출을 위한 `reqwest` + `tokio` |
+| 제14-1장 (테스트) | 유닛 테스트 + 통합 테스트 |
 
 ---
 
-### Step 1: Project Setup
+### 1단계: 프로젝트 설정
 
 ```bash
 cargo new weather-cli
 cd weather-cli
 ```
 
-Add dependencies to `Cargo.toml`:
+`Cargo.toml`에 의존성 추가:
 ```toml
 [package]
 name = "weather-cli"
@@ -60,28 +60,28 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4", features = ["derive"] }   # CLI args (like System.CommandLine)
-reqwest = { version = "0.12", features = ["json"] } # HTTP client (like HttpClient)
-serde = { version = "1", features = ["derive"] }    # Serialization (like System.Text.Json)
+clap = { version = "4", features = ["derive"] }   # CLI 인자 처리 (System.CommandLine과 유사)
+reqwest = { version = "0.12", features = ["json"] } # HTTP 클라이언트 (HttpClient와 유사)
+serde = { version = "1", features = ["derive"] }    # 직렬화 (System.Text.Json과 유사)
 serde_json = "1"
-thiserror = "2"                                      # Error types
-tokio = { version = "1", features = ["full"] }       # Async runtime
+thiserror = "2"                                      # 에러 타입 정의
+tokio = { version = "1", features = ["full"] }       # 비동기 런타임
 ```
 
 ```csharp
-// C# equivalent dependencies:
+// C# 대응 의존성:
 // dotnet add package System.CommandLine
 // dotnet add package System.Net.Http.Json
-// (System.Text.Json and HttpClient are built-in)
+// (System.Text.Json과 HttpClient는 기본 내장됨)
 ```
 
-### Step 2: Define Your Data Types
+### 2단계: 데이터 타입 정의
 
-Create `src/weather.rs`:
+`src/weather.rs` 생성:
 ```rust
 use serde::Deserialize;
 
-/// Raw API response (matches JSON shape)
+/// Raw API 응답 (JSON 구조와 일치)
 #[derive(Deserialize, Debug)]
 pub struct ApiResponse {
     pub main: MainData,
@@ -107,7 +107,7 @@ pub struct WindData {
     pub speed: f64,
 }
 
-/// Our domain type (clean, decoupled from API)
+/// 도메인 타입 (API 구조와 분리된 깔끔한 형태)
 #[derive(Debug, Clone)]
 pub struct WeatherReport {
     pub city: String,
@@ -136,38 +136,38 @@ impl From<ApiResponse> for WeatherReport {
 ```
 
 ```csharp
-// C# equivalent:
+// C# 대응 코드:
 // public record ApiResponse(MainData Main, List<WeatherCondition> Weather, ...);
 // public record WeatherReport(string City, double TempCelsius, ...);
-// Manual mapping or AutoMapper
+// 수동 매핑 또는 AutoMapper 사용
 ```
 
-**Key difference:** `#[derive(Deserialize)]` + `From` impl replaces C#'s `JsonSerializer.Deserialize<T>()` + AutoMapper. Both happen at compile time in Rust — no reflection.
+**주요 차이점:** Rust에서는 `#[derive(Deserialize)]`와 `From` 구현이 C#의 `JsonSerializer.Deserialize<T>()`와 AutoMapper 역할을 대신합니다. 두 과정 모두 컴파일 타임에 결정되며 리플렉션(reflection)을 사용하지 않습니다.
 
-### Step 3: Error Type
+### 3단계: 에러 타입 정의
 
-Create `src/error.rs`:
+`src/error.rs` 생성:
 ```rust
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum WeatherError {
-    #[error("HTTP request failed: {0}")]
+    #[error("HTTP 요청 실패: {0}")]
     Http(#[from] reqwest::Error),
 
-    #[error("City not found: {0}")]
+    #[error("도시를 찾을 수 없음: {0}")]
     CityNotFound(String),
 
-    #[error("API key not set — export WEATHER_API_KEY")]
+    #[error("API 키가 설정되지 않음 — WEATHER_API_KEY 환경변수를 설정하세요")]
     MissingApiKey,
 }
 
 pub type Result<T> = std::result::Result<T, WeatherError>;
 ```
 
-### Step 4: HTTP Client
+### 4단계: HTTP 클라이언트 구현
 
-Create `src/client.rs`:
+`src/client.rs` 생성:
 ```rust
 use crate::error::{WeatherError, Result};
 use crate::weather::{ApiResponse, WeatherReport};
@@ -204,21 +204,21 @@ impl WeatherClient {
 ```
 
 ```csharp
-// C# equivalent:
+// C# 대응 코드:
 // var response = await _httpClient.GetAsync(url);
 // if (response.StatusCode == HttpStatusCode.NotFound)
 //     throw new CityNotFoundException(city);
 // var data = await response.Content.ReadFromJsonAsync<ApiResponse>();
 ```
 
-**Key differences:**
-- `?` operator replaces `try/catch` — errors propagate automatically via `Result`
-- `WeatherReport::from(api_data)` uses the `From` trait instead of AutoMapper
-- No `IHttpClientFactory` — `reqwest::Client` handles connection pooling internally
+**주요 차이점:**
+- `try/catch` 대신 `?` 연산자를 사용합니다 — 에러는 `Result`를 통해 자동으로 전파됩니다.
+- AutoMapper 대신 `From` 트레이트를 사용하여 `WeatherReport::from(api_data)`와 같이 변환합니다.
+- `IHttpClientFactory`가 필요 없습니다 — `reqwest::Client`가 내부적으로 커넥션 풀링(connection pooling)을 관리합니다.
 
-### Step 5: Display Formatting
+### 5단계: 화면 출력 포맷팅
 
-Create `src/display.rs`:
+`src/display.rs` 생성:
 ```rust
 use std::fmt;
 use crate::weather::WeatherReport;
@@ -244,7 +244,7 @@ fn weather_icon(description: &str) -> &str {
 }
 ```
 
-### Step 6: Wire It All Together
+### 6단계: 모든 기능 연결하기
 
 `src/lib.rs`:
 ```rust
@@ -260,9 +260,9 @@ use clap::Parser;
 use weather_cli::{client::WeatherClient, error::WeatherError};
 
 #[derive(Parser)]
-#[command(name = "weather-cli", about = "Fetch weather from the command line")]
+#[command(name = "weather-cli", about = "커맨드 라인에서 날씨를 가져옵니다")]
 struct Cli {
-    /// City name to look up
+    /// 조회할 도시 이름
     #[arg(short, long)]
     city: String,
 }
@@ -274,7 +274,7 @@ async fn main() {
     let api_key = match std::env::var("WEATHER_API_KEY") {
         Ok(key) => key,
         Err(_) => {
-            eprintln!("Error: {}", WeatherError::MissingApiKey);
+            eprintln!("에러: {}", WeatherError::MissingApiKey);
             std::process::exit(1);
         }
     };
@@ -284,21 +284,21 @@ async fn main() {
     match client.get_weather(&cli.city).await {
         Ok(report) => println!("{report}"),
         Err(WeatherError::CityNotFound(city)) => {
-            eprintln!("City not found: {city}");
+            eprintln!("도시를 찾을 수 없습니다: {city}");
             std::process::exit(1);
         }
         Err(e) => {
-            eprintln!("Error: {e}");
+            eprintln!("에러: {e}");
             std::process::exit(1);
         }
     }
 }
 ```
 
-### Step 7: Tests
+### 7단계: 테스트 작성
 
 ```rust
-// In src/weather.rs or tests/weather_test.rs
+// src/weather.rs 또는 tests/weather_test.rs에 작성
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -351,23 +351,23 @@ mod tests {
 
 ---
 
-### Final File Layout
+### 최종 파일 구조
 
 ```
 weather-cli/
 ├── Cargo.toml
 ├── src/
-│   ├── main.rs        # CLI entry point (clap)
-│   ├── lib.rs         # Module declarations
-│   ├── client.rs      # HTTP client (reqwest + tokio)
-│   ├── weather.rs     # Data types + From impl + tests
-│   ├── display.rs     # Display formatting
-│   └── error.rs       # WeatherError + Result alias
+│   ├── main.rs        # CLI 엔트리 포인트 (clap)
+│   ├── lib.rs         # 모듈 선언
+│   ├── client.rs      # HTTP 클라이언트 (reqwest + tokio)
+│   ├── weather.rs     # 데이터 타입 + From 구현 + 테스트
+│   ├── display.rs     # 출력 포맷팅
+│   └── error.rs       # WeatherError + Result 별칭
 └── tests/
-    └── integration.rs # Integration tests
+    └── integration.rs # 통합 테스트
 ```
 
-Compare to the C# equivalent:
+C# 프로젝트 구조와의 비교:
 ```
 WeatherCli/
 ├── WeatherCli.csproj
@@ -381,15 +381,15 @@ WeatherCli/
     └── WeatherTests.cs
 ```
 
-**The Rust version is remarkably similar in structure.** The main differences are:
-- `mod` declarations instead of namespaces
-- `Result<T, E>` instead of exceptions
-- `From` trait instead of AutoMapper
-- Explicit `#[tokio::main]` instead of built-in async runtime
+**Rust 버전의 구조는 C#과 매우 흡사합니다.** 주요 차이점은 다음과 같습니다:
+- 네임스페이스 대신 `mod` 선언을 사용합니다.
+- 예외(exception) 대신 `Result<T, E>`를 사용합니다.
+- AutoMapper 대신 `From` 트레이트를 사용합니다.
+- 기본 내장 비동기 런타임 대신 명시적인 `#[tokio::main]`을 사용합니다.
 
-### Bonus: Integration Test Stub
+### 보너스: 통합 테스트 스텁 (Integration Test Stub)
 
-Create `tests/integration.rs` to test the public API without hitting a real server:
+실제 서버를 호출하지 않고 공용 API를 테스트하기 위해 `tests/integration.rs`를 작성합니다.
 
 ```rust
 // tests/integration.rs
@@ -412,20 +412,20 @@ fn weather_report_display_roundtrip() {
 }
 ```
 
-Run with `cargo test` — Rust discovers tests in both `src/` (`#[cfg(test)]` modules) and `tests/` (integration tests) automatically. No test framework configuration needed — compare that to setting up xUnit/NUnit in C#.
+`cargo test`를 실행하면 — Rust는 `src/` 내의 테스트(`#[cfg(test)]` 모듈)와 `tests/` 내의 통합 테스트를 자동으로 찾아 실행합니다. xUnit이나 NUnit을 설정할 때와 비교하면 별도의 테스트 프레임워크 설정이 거의 필요 없음을 알 수 있습니다.
 
 ---
 
-### Extension Challenges
+### 심화 도전 과제 (Extension Challenges)
 
-Once it works, try these to deepen your skills:
+도구가 정상 작동한다면, 다음 과제들을 통해 실력을 더 쌓아보세요:
 
-1. **Add caching** — Store the last API response in a file. On startup, check if it's less than 10 minutes old and skip the HTTP call. This exercises `std::fs`, `serde_json::to_writer`, and `SystemTime`.
+1. **캐싱 기능 추가** — 마지막 API 응답을 파일에 저장합니다. 시작 시 파일이 10분 이내라면 HTTP 호출을 건너뛰고 캐시를 사용합니다. 이 과정에서 `std::fs`, `serde_json::to_writer`, `SystemTime`을 연습하게 됩니다.
 
-2. **Add multiple cities** — Accept `--city "Seattle,Portland,Vancouver"` and fetch all concurrently with `tokio::join!`. This exercises concurrent async.
+2. **여러 도시 지원** — `--city "Seattle,Portland,Vancouver"`와 같이 입력받아 `tokio::join!`을 사용하여 모든 도시의 정보를 동시에 가져옵니다. 이 과정에서 동시 비동기 처리를 연습하게 됩니다.
 
-3. **Add a `--format json` flag** — Output the report as JSON instead of human-readable text using `serde_json::to_string_pretty`. This exercises conditional formatting and `Serialize`.
+3. **`--format json` 플래그 추가** — 사람이 읽는 텍스트 대신 `serde_json::to_string_pretty`를 사용하여 결과를 JSON으로 출력합니다. 이 과정에서 조건부 포맷팅과 `Serialize`를 연습하게 됩니다.
 
-4. **Write an integration test** — Create `tests/integration.rs` that tests the full flow with a mock HTTP server using `wiremock`. This exercises the `tests/` directory pattern from ch14-1.
+4. **심화 통합 테스트 작성** — `wiremock`을 사용하여 모의(mock) HTTP 서버를 만들고 전체 흐름을 테스트하는 `tests/integration.rs`를 작성합니다. 14-1장에서 다룬 `tests/` 디렉토리 패턴을 연습하게 됩니다.
 
 ***

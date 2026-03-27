@@ -1,106 +1,104 @@
-## Rust Closures
+## Rust 클로저(Closures)와 반복자(Iterators)
 
-> **What you'll learn:** Closures with ownership-aware captures (`Fn`/`FnMut`/`FnOnce`) vs C# lambdas,
-> Rust iterators as a zero-cost replacement for LINQ, lazy vs eager evaluation,
-> and parallel iteration with `rayon`.
+> **학습 내용:** 소유권을 인식하는 캡처 방식(`Fn`/`FnMut`/`FnOnce`)을 가진 클로저와 C# 람다의 비교, LINQ를 대체하는 제로 비용 추상화인 Rust 반복자, 지연(Lazy) 평가와 즉시(Eager) 평가의 차이, 그리고 `rayon`을 이용한 병렬 반복.
 >
-> **Difficulty:** 🟡 Intermediate
+> **난이도:** 🟡 중급
 
-Closures in Rust are similar to C# lambdas and delegates, but with ownership-aware captures.
+Rust의 클로저는 C#의 람다(Lambdas) 및 델리게이트(Delegates)와 유사하지만, 소유권을 고려하여 변수를 캡처한다는 점이 다릅니다.
 
-### C# Lambdas and Delegates
+### C# 람다와 델리게이트
 ```csharp
-// C# - Lambdas capture by reference
+// C# - 람다는 참조로 캡처함
 Func<int, int> doubler = x => x * 2;
 Action<string> printer = msg => Console.WriteLine(msg);
 
-// Closure capturing outer variables
+// 외부 변수를 캡처하는 클로저
 int multiplier = 3;
 Func<int, int> multiply = x => x * multiplier;
-Console.WriteLine(multiply(5)); // 15
+Console.WriteLine(multiply(5)); // 15 출력
 
-// LINQ uses lambdas extensively
+// LINQ는 람다를 광범위하게 사용함
 var evens = numbers.Where(n => n % 2 == 0).ToList();
 ```
 
-### Rust Closures
+### Rust 클로저
 ```rust
-// Rust closures - ownership-aware
+// Rust 클로저 - 소유권 인식
 let doubler = |x: i32| x * 2;
 let printer = |msg: &str| println!("{}", msg);
 
-// Closure capturing by reference (default for immutable)
+// 참조로 캡처 (불변 캡처의 기본값)
 let multiplier = 3;
-let multiply = |x: i32| x * multiplier; // borrows multiplier
-println!("{}", multiply(5)); // 15
-println!("{}", multiplier); // still accessible
+let multiply = |x: i32| x * multiplier; // multiplier를 빌림
+println!("{}", multiply(5)); // 15 출력
+println!("{}", multiplier); // 여전히 접근 가능
 
-// Closure capturing by move
+// 이동(move)을 통한 캡처
 let data = vec![1, 2, 3];
 let owns_data = move || {
-    println!("{:?}", data); // data moved into closure
+    println!("{:?}", data); // data가 클로저 내부로 이동됨
 };
 owns_data();
-// println!("{:?}", data); // ERROR: data was moved
+// println!("{:?}", data); // 에러: data가 이미 이동됨
 
-// Using closures with iterators
+// 반복자와 함께 클로저 사용하기
 let numbers = vec![1, 2, 3, 4, 5];
 let evens: Vec<&i32> = numbers.iter().filter(|&&n| n % 2 == 0).collect();
 ```
 
-### Closure Types
+### 클로저 타입 (Fn, FnMut, FnOnce)
 ```rust
-// Fn - borrows captured values immutably
+// Fn - 캡처한 값을 불변으로 빌림
 fn apply_fn(f: impl Fn(i32) -> i32, x: i32) -> i32 {
     f(x)
 }
 
-// FnMut - borrows captured values mutably
+// FnMut - 캡처한 값을 가변으로 빌림
 fn apply_fn_mut(mut f: impl FnMut(i32), values: &[i32]) {
     for &v in values {
         f(v);
     }
 }
 
-// FnOnce - takes ownership of captured values
+// FnOnce - 캡처한 값의 소유권을 가져옴
 fn apply_fn_once(f: impl FnOnce() -> Vec<i32>) -> Vec<i32> {
-    f() // can only call once
+    f() // 한 번만 호출 가능
 }
 
 fn main() {
-    // Fn example
+    // Fn 예시
     let multiplier = 3;
     let result = apply_fn(|x| x * multiplier, 5);
     
-    // FnMut example
+    // FnMut 예시
     let mut sum = 0;
     apply_fn_mut(|x| sum += x, &[1, 2, 3, 4, 5]);
-    println!("Sum: {}", sum); // 15
+    println!("합계: {}", sum); // 15 출력
     
-    // FnOnce example
+    // FnOnce 예시
     let data = vec![1, 2, 3];
-    let result = apply_fn_once(move || data); // moves data
+    let result = apply_fn_once(move || data); // data를 이동시킴
 }
 ```
 
 ***
 
-## LINQ vs Rust Iterators
+## LINQ vs Rust 반복자(Iterators)
 
 ### C# LINQ (Language Integrated Query)
 ```csharp
-// C# LINQ - Declarative data processing
+// C# LINQ - 선언적 데이터 처리
 var numbers = new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
 var result = numbers
-    .Where(n => n % 2 == 0)           // Filter even numbers
-    .Select(n => n * n)               // Square them
-    .Where(n => n > 10)               // Filter > 10
-    .OrderByDescending(n => n)        // Sort descending
-    .Take(3)                          // Take first 3
-    .ToList();                        // Materialize
+    .Where(n => n % 2 == 0)           // 짝수 필터링
+    .Select(n => n * n)               // 제곱
+    .Where(n => n > 10)               // 10보다 큰 것 필터링
+    .OrderByDescending(n => n)        // 내림차순 정렬
+    .Take(3)                          // 처음 3개 선택
+    .ToList();                        // 구체화(Materialize)
 
-// LINQ with complex objects
+// 복잡한 객체를 사용하는 LINQ
 var users = GetUsers();
 var activeAdults = users
     .Where(u => u.IsActive && u.Age >= 18)
@@ -113,7 +111,7 @@ var activeAdults = users
     .OrderBy(x => x.Department)
     .ToList();
 
-// Async LINQ (with additional libraries)
+// 비동기 LINQ (추가 라이브러리 필요)
 var results = await users
     .ToAsyncEnumerable()
     .WhereAwait(async u => await IsActiveAsync(u.Id))
@@ -121,23 +119,23 @@ var results = await users
     .ToListAsync();
 ```
 
-### Rust Iterators
+### Rust 반복자
 ```rust
-// Rust iterators - Lazy, zero-cost abstractions
+// Rust 반복자 - 지연 평가, 제로 비용 추상화
 let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 let result: Vec<i32> = numbers
     .iter()
-    .filter(|&&n| n % 2 == 0)        // Filter even numbers
-    .map(|&n| n * n)                 // Square them
-    .filter(|&n| n > 10)             // Filter > 10
-    .collect::<Vec<_>>()             // Collect to Vec
+    .filter(|&&n| n % 2 == 0)        // 짝수 필터링
+    .map(|&n| n * n)                 // 제곱
+    .filter(|&n| n > 10)             // 10보다 큰 것 필터링
+    .collect::<Vec<_>>()             // Vec으로 수집
     .into_iter()
-    .rev()                           // Reverse (descending sort)
-    .take(3)                         // Take first 3
-    .collect();                      // Materialize
+    .rev()                           // 역순 (내림차순 효과)
+    .take(3)                         // 처음 3개 선택
+    .collect();                      // 구체화
 
-// Complex iterator chains
+// 복잡한 반복자 체인
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -154,41 +152,41 @@ fn process_users(users: Vec<User>) -> HashMap<String, (usize, f64)> {
         .filter(|u| u.is_active && u.age >= 18)
         .fold(HashMap::new(), |mut acc, user| {
             let entry = acc.entry(user.department.clone()).or_insert((0, 0.0));
-            entry.0 += 1;  // count
-            entry.1 += user.age as f64;  // sum of ages
+            entry.0 += 1;  // 카운트
+            entry.1 += user.age as f64;  // 나이 합계
             acc
         })
         .into_iter()
-        .map(|(dept, (count, sum))| (dept, (count, sum / count as f64)))  // average
+        .map(|(dept, (count, sum))| (dept, (count, sum / count as f64)))  // 평균
         .collect()
 }
 
-// Parallel processing with rayon
+// rayon을 이용한 병렬 처리
 use rayon::prelude::*;
 
 fn parallel_processing(numbers: Vec<i32>) -> Vec<i32> {
     numbers
-        .par_iter()                  // Parallel iterator
+        .par_iter()                  // 병렬 반복자
         .filter(|&&n| n % 2 == 0)
         .map(|&n| expensive_computation(n))
         .collect()
 }
 
 fn expensive_computation(n: i32) -> i32 {
-    // Simulate heavy computation
+    // 무거운 계산 시뮬레이션
     (0..1000).fold(n, |acc, _| acc + 1)
 }
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# LINQ Characteristics"
-        CS_LINQ["LINQ Expression"]
-        CS_EAGER["Often eager evaluation<br/>(ToList(), ToArray())"]
-        CS_REFLECTION["[ERROR] Some runtime reflection<br/>Expression trees"]
-        CS_ALLOCATIONS["[ERROR] Intermediate collections<br/>Garbage collection pressure"]
-        CS_ASYNC["[OK] Async support<br/>(with additional libraries)"]
-        CS_SQL["[OK] LINQ to SQL/EF integration"]
+    subgraph "C# LINQ 특징"
+        CS_LINQ["LINQ 표현식"]
+        CS_EAGER["자주 발생하는 즉시 평가<br/>(ToList(), ToArray())"]
+        CS_REFLECTION["[단점] 일부 런타임 리플렉션 발생<br/>표현식 트리(Expression trees)"]
+        CS_ALLOCATIONS["[단점] 중간 컬렉션 생성<br/>가비지 컬렉션 부하"]
+        CS_ASYNC["[장점] 비동기 지원<br/>(추가 라이브러리 활용)"]
+        CS_SQL["[장점] LINQ to SQL/EF 통합"]
         
         CS_LINQ --> CS_EAGER
         CS_LINQ --> CS_REFLECTION
@@ -197,13 +195,13 @@ graph TD
         CS_LINQ --> CS_SQL
     end
     
-    subgraph "Rust Iterator Characteristics"
-        RUST_ITER["Iterator Chain"]
-        RUST_LAZY["[OK] Lazy evaluation<br/>No work until .collect()"]
-        RUST_ZERO["[OK] Zero-cost abstractions<br/>Compiles to optimal loops"]
-        RUST_NO_ALLOC["[OK] No intermediate allocations<br/>Stack-based processing"]
-        RUST_PARALLEL["[OK] Easy parallelization<br/>(rayon crate)"]
-        RUST_FUNCTIONAL["[OK] Functional programming<br/>Immutable by default"]
+    subgraph "Rust 반복자 특징"
+        RUST_ITER["반복자 체인"]
+        RUST_LAZY["[장점] 지연 평가<br/>.collect() 호출 전까지 작업 안 함"]
+        RUST_ZERO["[장점] 제로 비용 추상화<br/>최적화된 루프로 컴파일됨"]
+        RUST_NO_ALLOC["[장점] 중간 할당 없음<br/>스택 기반 처리"]
+        RUST_PARALLEL["[장점] 손쉬운 병렬화<br/>(rayon 크레이트)"]
+        RUST_FUNCTIONAL["[장점] 함수형 프로그래밍<br/>기본적으로 불변성 유지"]
         
         RUST_ITER --> RUST_LAZY
         RUST_ITER --> RUST_ZERO
@@ -212,9 +210,9 @@ graph TD
         RUST_ITER --> RUST_FUNCTIONAL
     end
     
-    subgraph "Performance Comparison"
-        CS_PERF["C# LINQ Performance<br/>[ERROR] Allocation overhead<br/>[ERROR] Virtual dispatch<br/>[OK] Good enough for most cases"]
-        RUST_PERF["Rust Iterator Performance<br/>[OK] Hand-optimized speed<br/>[OK] No allocations<br/>[OK] Compile-time optimization"]
+    subgraph "성능 비교"
+        CS_PERF["C# LINQ 성능<br/>[단점] 할당 오버헤드<br/>[단점] 가상 디스패치<br/>[장점] 대부분의 경우 충분함"]
+        RUST_PERF["Rust 반복자 성능<br/>[장점] 수동 최적화 수준의 속도<br/>[장점] 할당 없음<br/>[장점] 컴파일 타임 최적화"]
     end
     
     style CS_REFLECTION fill:#ffcdd2,color:#000
@@ -230,12 +228,12 @@ graph TD
 
 
 <details>
-<summary><strong>🏋️ Exercise: LINQ to Iterators Translation</strong> (click to expand)</summary>
+<summary><strong>🏋️ 연습 문제: LINQ를 반복자로 변환하기</strong> (클릭하여 확장)</summary>
 
-**Challenge**: Translate this C# LINQ pipeline to idiomatic Rust iterators.
+**도전 과제**: 다음 C# LINQ 파이프라인을 관용적인 Rust 반복자로 변환하십시오.
 
 ```csharp
-// C# — translate to Rust
+// C# — Rust로 변환하십시오
 record Employee(string Name, string Dept, int Salary);
 
 var result = employees
@@ -251,7 +249,7 @@ var result = employees
 ```
 
 <details>
-<summary>🔑 Solution</summary>
+<summary>🔑 정답</summary>
 
 ```rust
 use std::collections::HashMap;
@@ -281,19 +279,19 @@ fn department_stats(employees: &[Employee]) -> Vec<DeptStats> {
 }
 ```
 
-**Key takeaways**:
-- Rust has no built-in `group_by` on iterators — `HashMap` + `fold`/`for` is the idiomatic pattern
-- `itertools` crate adds `.group_by()` for more LINQ-like syntax
-- Iterator chains are zero-cost — the compiler optimizes them to simple loops
+**핵심 요점**:
+- Rust 반복자에는 내장된 `group_by`가 없습니다. `HashMap`과 `fold` 또는 `for` 루프를 사용하는 것이 관용적인 패턴입니다.
+- `itertools` 크레이트를 사용하면 더 LINQ와 유사한 `.group_by()` 문법을 쓸 수 있습니다.
+- 반복자 체인은 제로 비용입니다. 컴파일러가 이를 단순한 루프로 최적화합니다.
 
 </details>
 </details>
 
 
-<!-- ch12.0a: itertools — LINQ Power Tools -->
-## itertools: The Missing LINQ Operations
+<!-- ch12.0a: itertools — LINQ 파워 툴 -->
+## itertools: 부족한 LINQ 연산 채우기
 
-Standard Rust iterators cover `map`, `filter`, `fold`, `take`, and `collect`. But C# developers using `GroupBy`, `Zip`, `Chunk`, `SelectMany`, and `Distinct` will immediately notice gaps. The **`itertools`** crate fills them.
+표준 Rust 반복자는 `map`, `filter`, `fold`, `take`, `collect` 등을 지원합니다. 하지만 C# 개발자가 자주 쓰는 `GroupBy`, `Zip`, `Chunk`, `SelectMany`, `Distinct` 등은 표준에 없거나 사용법이 다를 수 있습니다. 이를 **`itertools`** 크레이트가 해결해 줍니다.
 
 ```toml
 # Cargo.toml
@@ -301,26 +299,26 @@ Standard Rust iterators cover `map`, `filter`, `fold`, `take`, and `collect`. Bu
 itertools = "0.12"
 ```
 
-### Side-by-Side: LINQ vs itertools
+### 비교 분석: LINQ vs itertools
 
 ```csharp
 // C# — GroupBy
 var byDept = employees.GroupBy(e => e.Department)
     .Select(g => new { Dept = g.Key, Count = g.Count() });
 
-// C# — Chunk (batching)
+// C# — Chunk (일정 개수씩 묶기)
 var batches = items.Chunk(100);  // IEnumerable<T[]>
 
-// C# — Distinct / DistinctBy
+// C# — Distinct / DistinctBy (중복 제거)
 var unique = users.DistinctBy(u => u.Email);
 
-// C# — SelectMany (flatten)
+// C# — SelectMany (평탄화)
 var allTags = posts.SelectMany(p => p.Tags);
 
-// C# — Zip
+// C# — Zip (두 시퀀스 결합)
 var pairs = names.Zip(scores, (n, s) => new { Name = n, Score = s });
 
-// C# — Sliding window
+// C# — Sliding window (이동 평균 등)
 var windows = data.Zip(data.Skip(1), data.Skip(2))
     .Select(triple => (triple.First + triple.Second + triple.Third) / 3.0);
 ```
@@ -328,7 +326,7 @@ var windows = data.Zip(data.Skip(1), data.Skip(2))
 ```rust
 use itertools::Itertools;
 
-// Rust — group_by (requires sorted input)
+// Rust — group_by (정렬된 입력 필요)
 let by_dept = employees.iter()
     .sorted_by_key(|e| &e.department)
     .group_by(|e| &e.department);
@@ -336,52 +334,52 @@ for (dept, group) in &by_dept {
     println!("{}: {} employees", dept, group.count());
 }
 
-// Rust — chunks (batching)
+// Rust — chunks (배칭 처리)
 let batches = items.iter().chunks(100);
 for batch in &batches {
     process_batch(batch.collect::<Vec<_>>());
 }
 
-// Rust — unique / unique_by
+// Rust — unique / unique_by (중복 제거)
 let unique: Vec<_> = users.iter().unique_by(|u| &u.email).collect();
 
-// Rust — flat_map (SelectMany equivalent — built-in!)
+// Rust — flat_map (SelectMany에 대응 — 표준 내장!)
 let all_tags: Vec<&str> = posts.iter().flat_map(|p| &p.tags).collect();
 
-// Rust — zip (built-in!)
+// Rust — zip (표준 내장!)
 let pairs: Vec<_> = names.iter().zip(scores.iter()).collect();
 
-// Rust — tuple_windows (sliding window)
+// Rust — tuple_windows (슬라이딩 윈도우)
 let moving_avg: Vec<f64> = data.iter()
     .tuple_windows::<(_, _, _)>()
     .map(|(a, b, c)| (*a + *b + *c) as f64 / 3.0)
     .collect();
 ```
 
-### itertools Quick Reference
+### itertools 빠른 참조표
 
-| LINQ Method | itertools Equivalent | Notes |
+| LINQ 메서드 | itertools 대응 기능 | 비고 |
 |------------|---------------------|-------|
-| `GroupBy(key)` | `.sorted_by_key().group_by()` | Requires sorted input (unlike LINQ) |
-| `Chunk(n)` | `.chunks(n)` | Returns iterator of iterators |
-| `Distinct()` | `.unique()` | Requires `Eq + Hash` |
+| `GroupBy(key)` | `.sorted_by_key().group_by()` | 정렬된 입력 필요 (LINQ와 다름) |
+| `Chunk(n)` | `.chunks(n)` | 반복자의 반복자를 반환 |
+| `Distinct()` | `.unique()` | `Eq + Hash` 구현 필요 |
 | `DistinctBy(key)` | `.unique_by(key)` | |
-| `SelectMany()` | `.flat_map()` | Built into std — no crate needed |
-| `Zip()` | `.zip()` | Built into std |
-| `Aggregate()` | `.fold()` | Built into std |
-| `Any()` / `All()` | `.any()` / `.all()` | Built into std |
-| `First()` / `Last()` | `.next()` / `.last()` | Built into std |
-| `Skip(n)` / `Take(n)` | `.skip(n)` / `.take(n)` | Built into std |
-| `OrderBy()` | `.sorted()` / `.sorted_by()` | `itertools` (std has none) |
-| `ThenBy()` | `.sorted_by(\|a,b\| a.x.cmp(&b.x).then(a.y.cmp(&b.y)))` | Chained `Ordering::then` |
-| `Intersect()` | `HashSet` intersection | No direct iterator method |
-| `Concat()` | `.chain()` | Built into std |
-| Sliding window | `.tuple_windows()` | Fixed-size tuples |
-| Cartesian product | `.cartesian_product()` | `itertools` |
-| Interleave | `.interleave()` | `itertools` |
-| Permutations | `.permutations(k)` | `itertools` |
+| `SelectMany()` | `.flat_map()` | 표준 내장 — 크레이트 불필요 |
+| `Zip()` | `.zip()` | 표준 내장 |
+| `Aggregate()` | `.fold()` | 표준 내장 |
+| `Any()` / `All()` | `.any()` / `.all()` | 표준 내장 |
+| `First()` / `Last()` | `.next()` / `.last()` | 표준 내장 |
+| `Skip(n)` / `Take(n)` | `.skip(n)` / `.take(n)` | 표준 내장 |
+| `OrderBy()` | `.sorted()` / `.sorted_by()` | `itertools` (표준에는 없음) |
+| `ThenBy()` | `.sorted_by(\|a,b\| a.x.cmp(&b.x).then(a.y.cmp(&b.y)))` | `Ordering::then` 체이닝 |
+| `Intersect()` | `HashSet` 교집합 | 직접적인 반복자 메서드 없음 |
+| `Concat()` | `.chain()` | 표준 내장 |
+| Sliding window | `.tuple_windows()` | 고정 크기 튜플 반환 |
+| Cartesian product | `.cartesian_product()` | `itertools` 제공 |
+| Interleave | `.interleave()` | `itertools` 제공 |
+| Permutations | `.permutations(k)` | `itertools` 제공 |
 
-### Real-World Example: Log Analysis Pipeline
+### 실전 사례: 로그 분석 파이프라인
 
 ```rust
 use itertools::Itertools;
@@ -391,9 +389,9 @@ use std::collections::HashMap;
 struct LogEntry { level: String, module: String, message: String }
 
 fn analyze_logs(entries: &[LogEntry]) {
-    // Top 5 noisiest modules (like LINQ GroupBy + OrderByDescending + Take)
+    // 가장 로그가 많은 상위 5개 모듈 (LINQ의 GroupBy + OrderByDescending + Take 조합)
     let noisy: Vec<_> = entries.iter()
-        .into_group_map_by(|e| &e.module) // itertools: direct group into HashMap
+        .into_group_map_by(|e| &e.module) // itertools: HashMap으로 직접 그룹화
         .into_iter()
         .sorted_by(|a, b| b.1.len().cmp(&a.1.len()))
         .take(5)
@@ -403,20 +401,18 @@ fn analyze_logs(entries: &[LogEntry]) {
         println!("{}: {} entries", module, entries.len());
     }
 
-    // Error rate per 100-entry window (sliding window)
+    // 100개 단위 윈도우별 에러율 (슬라이딩 윈도우)
     let error_rates: Vec<f64> = entries.iter()
         .map(|e| if e.level == "ERROR" { 1.0 } else { 0.0 })
         .collect::<Vec<_>>()
-        .windows(100)  // std slice method
+        .windows(100)  // 표준 슬라이스 메서드
         .map(|w| w.iter().sum::<f64>() / 100.0)
         .collect();
 
-    // Deduplicate consecutive identical messages
+    // 연속으로 중복되는 로그 메시지 제거
     let deduped: Vec<_> = entries.iter().dedup_by(|a, b| a.message == b.message).collect();
-    println!("Deduped {} → {} entries", entries.len(), deduped.len());
+    println!("중복 제거: {} → {} entries", entries.len(), deduped.len());
 }
 ```
 
 ***
-
-

@@ -1,9 +1,9 @@
-# Rust lifetime and borrowing
+# Rust 수명(Lifetimes) 및 빌림(Borrowing)
 
-> **What you'll learn:** How Rust's lifetime system ensures references never dangle — from implicit lifetimes through explicit annotations to the three elision rules that make most code annotation-free. Understanding lifetimes here is essential before moving on to smart pointers in the next section.
+> **학습 내용:** Rust의 수명 시스템이 참조자가 절대 댕글링(dangle)되지 않도록 보장하는 방법을 배웁니다 — 암시적 수명부터 명시적 주석, 그리고 대부분의 코드에서 주석을 생략할 수 있게 해주는 세 가지 생략 규칙까지 다룹니다. 다음 섹션의 스마트 포인터로 넘어가기 전에 수명을 이해하는 것이 필수적입니다.
 
-- Rust enforces a single mutable reference and any number of immutable references
-    - The lifetime of any reference must be at least as long as the original owning lifetime. These are implicit lifetimes and are inferred by the compiler (see https://doc.rust-lang.org/nomicon/lifetime-elision.html)
+- Rust는 단일 가변 참조자 또는 임의 개수의 불변 참조자를 강제합니다.
+    - 모든 참조자의 수명은 최소한 원본 소유자의 수명만큼 길어야 합니다. 이것들은 암시적 수명이며 컴파일러에 의해 추론됩니다 (https://doc.rust-lang.org/nomicon/lifetime-elision.html 참조).
 ```rust
 fn borrow_mut(x: &mut u32) {
     *x = 43;
@@ -12,34 +12,34 @@ fn main() {
     let mut x = 42;
     let y = &mut x;
     borrow_mut(y);
-    let _z = &x; // Permitted because the compiler knows y isn't subsequently used
-    //println!("{y}"); // Will not compile if this is uncommented
-    borrow_mut(&mut x); // Permitted because _z isn't used 
-    let z = &x; // Ok -- mutable borrow of x ended after borrow_mut() returned
+    let _z = &x; // 컴파일러가 y가 이후에 사용되지 않음을 알기 때문에 허용됩니다.
+    //println!("{y}"); // 이 줄의 주석을 해제하면 컴파일되지 않습니다.
+    borrow_mut(&mut x); // _z가 사용되지 않으므로 허용됩니다.
+    let z = &x; // OK -- borrow_mut()가 반환된 후 x의 가변 빌림이 끝났습니다.
     println!("{z}");
 }
 ```
 
-# Rust lifetime annotations
-- Explicit lifetime annotations are needed when dealing with multiple lifetimes
-    - Lifetimes are denoted with `'` and can be any identifier (`'a`, `'b`, `'static`, etc.)
-    - The compiler needs help when it can't figure out how long references should live
-- **Common scenario**: Function returns a reference, but which input does it come from?
+# Rust 수명 주석(Lifetime annotations)
+- 여러 수명을 다룰 때는 명시적인 수명 주석이 필요합니다.
+    - 수명은 `'`로 표시되며 임의의 식별자(```'a```, ```'b```, ```'static``` 등)가 될 수 있습니다.
+    - 컴파일러가 참조자가 얼마나 오래 살아야 하는지 스스로 파악할 수 없을 때 도움이 필요합니다.
+- **일반적인 시나리오**: 함수가 참조자를 반환할 때, 그 참조자가 어떤 입력으로부터 왔는지 명시해야 합니다.
 ```rust
 #[derive(Debug)]
 struct Point {x: u32, y: u32}
 
-// Without lifetime annotation, this won't compile:
+// 수명 주석이 없으면 컴파일되지 않습니다:
 // fn left_or_right(pick_left: bool, left: &Point, right: &Point) -> &Point
 
-// With lifetime annotation - all references share the same lifetime 'a
+// 수명 주석 포함 - 모든 참조자가 동일한 수명 'a를 공유합니다.
 fn left_or_right<'a>(pick_left: bool, left: &'a Point, right: &'a Point) -> &'a Point {
     if pick_left { left } else { right }
 }
 
-// More complex: different lifetimes for inputs
+// 더 복잡한 예시: 입력마다 다른 수명을 가짐
 fn get_x_coordinate<'a, 'b>(p1: &'a Point, _p2: &'b Point) -> &'a u32 {
-    &p1.x  // Return value lifetime tied to p1, not p2
+    &p1.x  // 반환 값의 수명은 p2가 아니라 p1에 묶여 있습니다.
 }
 
 fn main() {
@@ -48,16 +48,16 @@ fn main() {
     {
         let p2 = Point {x: 42, y: 50};
         result = left_or_right(true, &p1, &p2);
-        // This works because we use result before p2 goes out of scope
-        println!("Selected: {result:?}");
+        // p2가 범위를 벗어나기 전에 result를 사용하므로 작동합니다.
+        println!("선택됨: {result:?}");
     }
-    // This would NOT work - result references p2 which is now gone:
-    // println!("After scope: {result:?}");
+    // 아래 코드는 작동하지 않습니다 - result가 이미 사라진 p2를 참조하기 때문입니다:
+    // println!("범위 밖에서 사용: {result:?}");
 }
 ```
 
-# Rust lifetime annotations
-- Lifetime annotations are also needed for references in data structures
+# Rust 수명 주석
+- 데이터 구조체 내의 참조자에도 수명 주석이 필요합니다.
 ```rust
 use std::collections::HashMap;
 #[derive(Debug)]
@@ -73,30 +73,30 @@ fn main() {
     m.map.insert(1, &p1);
     {
         let p3 = Point{x: 60, y:70};
-        //m.map.insert(3, &p3); // Will not compile
-        // p3 is dropped here, but m will outlive
+        //m.map.insert(3, &p3); // 컴파일되지 않음
+        // p3는 여기서 드롭되지만 m은 더 오래 생존합니다.
     }
     for (k, v) in m.map {
         println!("{v:?}");
     }
-    // m is dropped here
-    // p1 and p are dropped here in that order
+    // m은 여기서 드롭됨
+    // p1과 p는 이 순서대로 여기서 드롭됨
 } 
 ```
 
-# Exercise: First word with lifetimes
+# 연습 문제: 수명을 이용한 첫 번째 단어 찾기
 
-🟢 **Starter** — practice lifetime elision in action
+🟢 **초급** — 실제 수명 생략 규칙(lifetime elision)을 연습해 봅니다.
 
-Write a function `fn first_word(s: &str) -> &str` that returns the first whitespace-delimited word from a string. Think about why this compiles without explicit lifetime annotations (hint: elision rule #1 and #2).
+문자열에서 공백으로 구분된 첫 번째 단어를 반환하는 `fn first_word(s: &str) -> &str` 함수를 작성하세요. 왜 이 함수가 명시적인 수명 주석 없이도 컴파일되는지 생각해 보세요 (힌트: 생략 규칙 #1과 #2).
 
-<details><summary>Solution (click to expand)</summary>
+<details><summary>풀이 (클릭하여 확장)</summary>
 
 ```rust
 fn first_word(s: &str) -> &str {
-    // The compiler applies elision rules:
-    // Rule 1: input &str gets lifetime 'a → fn first_word(s: &'a str) -> &str
-    // Rule 2: single input lifetime → output gets same → fn first_word(s: &'a str) -> &'a str
+    // 컴파일러가 생략 규칙을 적용합니다:
+    // 규칙 1: 입력 &str에 수명 'a를 부여 → fn first_word(s: &'a str) -> &str
+    // 규칙 2: 입력 수명이 하나뿐이므로 출력에도 동일하게 부여 → fn first_word(s: &'a str) -> &'a str
     match s.find(' ') {
         Some(pos) => &s[..pos],
         None => s,
@@ -106,23 +106,23 @@ fn first_word(s: &str) -> &str {
 fn main() {
     let text = "hello world foo";
     let word = first_word(text);
-    println!("First word: {word}");  // "hello"
+    println!("첫 번째 단어: {word}");  // "hello"
     
     let single = "onlyone";
-    println!("First word: {}", first_word(single));  // "onlyone"
+    println!("첫 번째 단어: {}", first_word(single));  // "onlyone"
 }
 ```
 
 </details>
 
-# Exercise: Slice storage with lifetimes
+# 연습 문제: 수명을 사용한 슬라이스 저장
 
-🟡 **Intermediate** — your first encounter with lifetime annotations
-- Create a structure that stores references to the slice of a ```&str```
-    - Create a long ```&str``` and store references slices from it inside the structure
-    - Write a function that accepts the structure and returns the contained slice
+🟡 **중급** — 수명 주석과의 첫 만남
+- ```&str```의 슬라이스에 대한 참조자를 저장하는 구조체를 만드세요.
+    - 긴 ```&str```을 만들고 구조체 내부에 그 슬라이스 참조자들을 저장하세요.
+    - 구조체를 받아 그 안에 포함된 슬라이스를 반환하는 함수를 작성하세요.
 ```rust
-// TODO: Create a structure to store a reference to a slice
+// TODO: 슬라이스 참조자를 저장할 구조체 생성
 struct SliceStore {
 
 }
@@ -135,7 +135,7 @@ fn main() {
 }
 ```
 
-<details><summary>Solution (click to expand)</summary>
+<details><summary>풀이 (클릭하여 확장)</summary>
 
 ```rust
 struct SliceStore<'a> {
@@ -159,7 +159,7 @@ fn main() {
     println!("store1: {}", store1.get_slice());
     println!("store2: {}", store2.get_slice());
 }
-// Output:
+// 출력:
 // store1: This
 // store2: is
 ```
@@ -168,154 +168,148 @@ fn main() {
 
 ---
 
-## Lifetime Elision Rules Deep Dive
+## 수명 생략 규칙(Lifetime Elision Rules) 심층 분석
 
-C programmers often ask: "If lifetimes are so important, why don't most Rust functions
-have `'a` annotations?" The answer is **lifetime elision** — the compiler applies three
-deterministic rules to infer lifetimes automatically.
+C 프로그래머들은 종종 묻습니다: "수명이 그렇게 중요하다면 왜 대부분의 Rust 함수에는 `'a` 주석이 없나요?" 그 답은 **수명 생략(lifetime elision)**에 있습니다. 컴파일러는 세 가지 결정론적 규칙을 적용하여 수명을 자동으로 추론합니다.
 
-### The Three Elision Rules
+### 세 가지 생략 규칙
 
-The Rust compiler applies these rules **in order** to function signatures. If all output
-lifetimes are determined after applying the rules, no annotations are needed.
+Rust 컴파일러는 함수 시그니처에 대해 다음 규칙들을 **순서대로** 적용합니다. 규칙 적용 후 모든 출력 수명이 결정된다면 주석은 필요하지 않습니다.
 
 ```mermaid
 flowchart TD
-    A["Function signature with references"] --> R1
-    R1["Rule 1: Each input reference<br/>gets its own lifetime<br/><br/>fn f(&str, &str)<br/>→ fn f<'a,'b>(&'a str, &'b str)"]
+    A["참조자가 포함된 함수 시그니처"] --> R1
+    R1["규칙 1: 각 입력 참조자는<br/>자신만의 수명을 가짐<br/><br/>fn f(&str, &str)<br/>→ fn f<'a,'b>(&'a str, &'b str)"]
     R1 --> R2
-    R2["Rule 2: If exactly ONE input<br/>lifetime, assign it to ALL outputs<br/><br/>fn f(&str) → &str<br/>→ fn f<'a>(&'a str) → &'a str"]
+    R2["규칙 2: 입력 수명이 정확히<br/>하나라면, 모든 출력에 할당<br/><br/>fn f(&str) → &str<br/>→ fn f<'a>(&'a str) → &'a str"]
     R2 --> R3
-    R3["Rule 3: If one input is &self<br/>or &mut self, assign its lifetime<br/>to ALL outputs<br/><br/>fn f(&self, &str) → &str<br/>→ fn f<'a>(&'a self, &str) → &'a str"]
-    R3 --> CHECK{{"All output lifetimes<br/>determined?"}}
-    CHECK -->|"Yes"| OK["✅ No annotations needed"]
-    CHECK -->|"No"| ERR["❌ Compile error:<br/>must annotate manually"]
+    R3["규칙 3: 입력 중 &self 또는<br/>&mut self가 있다면, 해당 수명을<br/>모든 출력에 할당<br/><br/>fn f(&self, &str) → &str<br/>→ fn f<'a>(&'a self, &str) → &'a str"]
+    R3 --> CHECK{{"모든 출력 수명이<br/>결정되었는가?"}}
+    CHECK -->|"예"| OK["✅ 주석 필요 없음"]
+    CHECK -->|"아니요"| ERR["❌ 컴파일 에러:<br/>수동으로 주석 작성 필요"]
     
     style OK fill:#91e5a3,color:#000
     style ERR fill:#ff6b6b,color:#000
 ```
 
-### Rule-by-Rule Examples
+### 규칙별 예시
 
-**Rule 1** — each input reference gets its own lifetime parameter:
+**규칙 1** — 각 입력 참조자는 자신만의 수명 매개변수를 갖습니다:
 ```rust
-// What you write:
+// 작성한 코드:
 fn first_word(s: &str) -> &str { ... }
 
-// What the compiler sees after Rule 1:
+// 규칙 1 적용 후 컴파일러가 보는 코드:
 fn first_word<'a>(s: &'a str) -> &str { ... }
-// Only one input lifetime → Rule 2 applies
+// 입력 수명이 하나뿐임 → 규칙 2 적용
 ```
 
-**Rule 2** — single input lifetime propagates to all outputs:
+**규칙 2** — 단일 입력 수명이 모든 출력으로 전파됩니다:
 ```rust
-// After Rule 2:
+// 규칙 2 적용 후:
 fn first_word<'a>(s: &'a str) -> &'a str { ... }
-// ✅ All output lifetimes determined — no annotation needed!
+// ✅ 모든 출력 수명이 결정됨 — 주석 불필요!
 ```
 
-**Rule 3** — `&self` lifetime propagates to outputs:
+**규칙 3** — `&self` 수명이 출력으로 전파됩니다:
 ```rust
-// What you write:
+// 작성한 코드:
 impl SliceStore<'_> {
     fn get_slice(&self) -> &str { self.slice }
 }
 
-// What the compiler sees after Rules 1 + 3:
+// 규칙 1 + 3 적용 후 컴파일러가 보는 코드:
 impl SliceStore<'_> {
     fn get_slice<'a>(&'a self) -> &'a str { self.slice }
 }
-// ✅ No annotation needed — &self lifetime used for output
+// ✅ 주석 불필요 — &self의 수명이 출력에 사용됨
 ```
 
-**When elision fails** — you must annotate:
+**생략이 실패할 때** — 직접 주석을 달아야 합니다:
 ```rust
-// Two input references, no &self → Rules 2 and 3 don't apply
-// fn longest(a: &str, b: &str) -> &str  ← WON'T COMPILE
+// 입력 참조자가 둘이고 &self가 없음 → 규칙 2와 3이 적용되지 않음
+// fn longest(a: &str, b: &str) -> &str  ← 컴파일되지 않음
 
-// Fix: tell the compiler which input the output borrows from
+// 해결책: 출력이 어떤 입력으로부터 빌려오는지 컴파일러에게 알려줍니다.
 fn longest<'a>(a: &'a str, b: &'a str) -> &'a str {
     if a.len() >= b.len() { a } else { b }
 }
 ```
 
-### C Programmer Mental Model
+### C 프로그래머의 정신적 모델
 
-In C, every pointer is independent — the programmer mentally tracks which allocation
-each pointer refers to, and the compiler trusts you completely. In Rust, lifetimes make
-this tracking **explicit and compiler-verified**:
+C에서 모든 포인터는 독립적입니다. 프로그래머는 각 포인터가 어떤 할당을 참조하는지 머릿속으로 추적하며, 컴파일러는 여러분을 전적으로 신뢰합니다. Rust에서 수명은 이러한 추적을 **명시적이고 컴파일러가 검증 가능하도록** 만듭니다.
 
-| C | Rust | What happens |
+| C | Rust | 일어나는 일 |
 |---|------|-------------|
-| `char* get_name(struct User* u)` | `fn get_name(&self) -> &str` | Rule 3 elides: output borrows from `self` |
-| `char* concat(char* a, char* b)` | `fn concat<'a>(a: &'a str, b: &'a str) -> &'a str` | Must annotate — two inputs |
-| `void process(char* in, char* out)` | `fn process(input: &str, output: &mut String)` | No output reference — no lifetime needed |
-| `char* buf; /* who owns this? */` | Compile error if lifetime is wrong | Compiler catches dangling pointers |
+| `char* get_name(struct User* u)` | `fn get_name(&self) -> &str` | 규칙 3에 의해 생략됨: 출력이 `self`로부터 빌림 |
+| `char* concat(char* a, char* b)` | `fn concat<'a>(a: &'a str, b: &'a str) -> &'a str` | 두 개의 입력이므로 반드시 주석 필요 |
+| `void process(char* in, char* out)` | `fn process(input: &str, output: &mut String)` | 출력 참조자가 없으므로 수명 주석 필요 없음 |
+| `char* buf; /* 소유자가 누구인가? */` | 수명이 잘못되면 컴파일 에러 | 컴파일러가 댕글링 포인터를 잡아냄 |
 
-### The `'static` Lifetime
+### `'static` 수명
 
-`'static` means the reference is valid for the **entire program duration**. It's the
-Rust equivalent of a C global or string literal:
+`'static`은 참조자가 **프로그램 실행 전체 기간** 동안 유효함을 의미합니다. 이는 C의 전역 변수나 문자열 리터럴에 해당하는 Rust의 개념입니다.
 
 ```rust
-// String literals are always 'static — they live in the binary's read-only section
-let s: &'static str = "hello";  // Same as: static const char* s = "hello"; in C
+// 문자열 리터럴은 항상 'static입니다 — 바이너리의 읽기 전용 섹션에 거주합니다.
+let s: &'static str = "hello";  // C의 static const char* s = "hello";와 같습니다.
 
-// Constants are also 'static
+// 상수 또한 'static입니다.
 static GREETING: &str = "hello";
 
-// Common in trait bounds for thread spawning:
+// 스레드 생성 시 트레이트 경계에서 자주 보입니다:
 fn spawn<F: FnOnce() + Send + 'static>(f: F) { /* ... */ }
-// 'static here means: "the closure must not borrow any local variables"
-// (either move them in, or use only 'static data)
+// 여기서 'static은 "클로저가 어떠한 지역 변수도 빌려와서는 안 된다"는 의미입니다.
+// (변수를 클로저 내부로 이동시키거나, 'static 데이터만 사용해야 함)
 ```
 
-### Exercise: Predict the Elision
+### 연습 문제: 생략 결과 예측하기
 
-🟡 **Intermediate**
+🟡 **중급**
 
-For each function signature below, predict whether the compiler can elide lifetimes.
-If not, add the necessary annotations:
+아래 각 함수 시그니처에 대해 컴파일러가 수명을 생략할 수 있는지 예측해 보세요.
+생략할 수 없다면 필요한 주석을 추가해 보세요.
 
 ```rust
-// 1. Can the compiler elide?
+// 1. 컴파일러가 생략할 수 있을까요?
 fn trim_prefix(s: &str) -> &str { &s[1..] }
 
-// 2. Can the compiler elide?
+// 2. 컴파일러가 생략할 수 있을까요?
 fn pick(flag: bool, a: &str, b: &str) -> &str {
     if flag { a } else { b }
 }
 
-// 3. Can the compiler elide?
+// 3. 컴파일러가 생략할 수 있을까요?
 struct Parser { data: String }
 impl Parser {
     fn next_token(&self) -> &str { &self.data[..5] }
 }
 
-// 4. Can the compiler elide?
+// 4. 컴파일러가 생략할 수 있을까요?
 fn split_at(s: &str, pos: usize) -> (&str, &str) {
     (&s[..pos], &s[pos..])
 }
 ```
 
-<details><summary>Solution (click to expand)</summary>
+<details><summary>풀이 (클릭하여 확장)</summary>
 
 ```rust,ignore
-// 1. YES — Rule 1 gives 'a to s, Rule 2 propagates to output
+// 1. 예 — 규칙 1이 s에 'a를 부여하고, 규칙 2가 이를 출력으로 전파합니다.
 fn trim_prefix(s: &str) -> &str { &s[1..] }
 
-// 2. NO — Two input references, no &self. Must annotate:
+// 2. 아니요 — 입력 참조자가 둘이고 &self가 없습니다. 주석을 달아야 합니다:
 fn pick<'a>(flag: bool, a: &'a str, b: &'a str) -> &'a str {
     if flag { a } else { b }
 }
 
-// 3. YES — Rule 1 gives 'a to &self, Rule 3 propagates to output
+// 3. 예 — 규칙 1이 &self에 'a를 부여하고, 규칙 3이 이를 출력으로 전파합니다.
 impl Parser {
     fn next_token(&self) -> &str { &self.data[..5] }
 }
 
-// 4. YES — Rule 1 gives 'a to s (only one input reference),
-//    Rule 2 propagates to BOTH outputs. Both slices borrow from s.
+// 4. 예 — 규칙 1이 s에 'a를 부여하고 (입력 참조자가 하나뿐임),
+//    규칙 2가 이를 두 출력 모두에 전파합니다. 두 슬라이스 모두 s로부터 빌려옵니다.
 fn split_at(s: &str, pos: usize) -> (&str, &str) {
     (&s[..pos], &s[pos..])
 }

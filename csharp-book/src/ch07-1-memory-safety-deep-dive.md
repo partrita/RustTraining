@@ -1,80 +1,79 @@
-## References vs Pointers
+## 참조 vs 포인터
 
-> **What you'll learn:** Rust references vs C# pointers and unsafe contexts, lifetime basics,
-> and why compile-time safety proofs are stronger than C#'s runtime checks (bounds checking, null guards).
+> **학습 목표:** Rust의 참조와 C#의 포인터 및 안전하지 않은(Unsafe) 컨텍스트를 비교하고, 수명(Lifetime)의 기초를 배웁니다. 왜 컴파일 타임의 안전성 증명이 C#의 런타임 체크(경계 검사, null 가드 등)보다 강력한지 이해합니다.
 >
-> **Difficulty:** 🟡 Intermediate
+> **난이도:** 🟡 중급
 
-### C# Pointers (Unsafe Context)
+### C# 포인터 (안전하지 않은 컨텍스트)
 ```csharp
-// C# unsafe pointers (rarely used)
+// C#의 안전하지 않은 포인터 (거의 사용되지 않음)
 unsafe void UnsafeExample()
 {
     int value = 42;
-    int* ptr = &value;  // Pointer to value
-    *ptr = 100;         // Dereference and modify
+    int* ptr = &value;  // 값에 대한 포인터
+    *ptr = 100;         // 역참조 및 수정
     Console.WriteLine(value);  // 100
 }
 ```
 
-### Rust References (Safe by Default)
+### Rust 참조 (기본적으로 안전함)
 ```rust
-// Rust references (always safe)
+// Rust 참조 (항상 안전함)
 fn safe_example() {
     let mut value = 42;
-    let ptr = &mut value;  // Mutable reference
-    *ptr = 100;           // Dereference and modify
+    let ptr = &mut value;  // 가변 참조
+    *ptr = 100;           // 역참조 및 수정
     println!("{}", value); // 100
 }
 
-// No "unsafe" keyword needed - borrow checker ensures safety
+// "unsafe" 키워드가 필요 없음 - 빌림 검사기가 안전성을 보장함
 ```
 
-### Lifetime Basics for C# Developers
+### C# 개발자를 위한 수명(Lifetime) 기초
 ```csharp
-// C# - Can return references that might become invalid
+// C# - 유효하지 않게 될 수 있는 참조를 반환할 수 있음
 public class LifetimeIssues
 {
     public string GetFirstWord(string input)
     {
-        return input.Split(' ')[0];  // Returns new string (safe)
+        return input.Split(' ')[0];  // 새로운 문자열 반환 (안전함)
     }
     
     public unsafe char* GetFirstChar(string input)
     {
-        // This would be dangerous - returning pointer to managed memory
+        // 위험한 상황 - 매니지드 메모리에 대한 포인터 반환
         fixed (char* ptr = input)
-            return ptr;  // ❌ Bad: ptr becomes invalid after method ends
+            return ptr;  // ❌ 위험: 메서드가 종료된 후 ptr은 유효하지 않게 됨
     }
 }
 ```
 
 ```rust
-// Rust - Lifetime checking prevents dangling references
+// Rust - 수명 검사를 통해 허공에 뜬 참조(Dangling reference) 방지
 fn get_first_word(input: &str) -> &str {
     input.split_whitespace().next().unwrap_or("")
-    // ✅ Safe: returned reference has same lifetime as input
+    // ✅ 안전함: 반환된 참조는 input과 동일한 수명을 가짐
 }
 
 fn invalid_reference() -> &str {
     let temp = String::from("hello");
-    &temp  // ❌ Compile error: temp doesn't live long enough
-    // temp would be dropped at end of function
+    &temp  // ❌ 컴파일 에러: temp가 충분히 오래 살지 못함
+    // 함수가 끝나면 temp는 해제되기 때문
 }
 
 fn valid_reference() -> String {
     let temp = String::from("hello");
-    temp  // ✅ Works: ownership is transferred to caller
+    temp  // ✅ 작동함: 소유권이 호출자에게 이전됨
 }
 ```
 
 ***
 
-## Memory Safety: Runtime Checks vs Compile-Time Proofs
+## 메모리 안전성: 런타임 체크 vs 컴파일 타임 증명
 
-### C# - Runtime Safety Net
+### C# - 런타임 안전장치
 ```csharp
-// C# relies on runtime checks and GC
+// C#은 런타임 체크와 GC에 의존합니다.
 public class Buffer
 {
     private byte[] data;
@@ -86,39 +85,39 @@ public class Buffer
     
     public void ProcessData(int index)
     {
-        // Runtime bounds checking
+        // 런타임 경계 검사(Bounds checking)
         if (index >= data.Length)
             throw new IndexOutOfRangeException();
             
-        data[index] = 42;  // Safe, but checked at runtime
+        data[index] = 42;  // 안전하지만 런타임에 매번 체크됨
     }
     
-    // Memory leaks still possible with events/static references
+    // 이벤트나 정적 참조로 인한 메모리 누수가 여전히 발생 가능
     public static event Action<string> GlobalEvent;
     
     public void Subscribe()
     {
-        GlobalEvent += HandleEvent;  // Can create memory leaks
-        // Forgot to unsubscribe - object won't be collected
+        GlobalEvent += HandleEvent;  // 메모리 누수를 유발할 수 있음
+        // 구독 해제를 잊으면 객체가 수집되지 않음
     }
     
     private void HandleEvent(string message) { /* ... */ }
     
-    // Null reference exceptions are still possible
+    // Null 참조 예외가 여전히 발생 가능
     public void ProcessUser(User user)
     {
-        Console.WriteLine(user.Name.ToUpper());  // NullReferenceException if user.Name is null
+        Console.WriteLine(user.Name.ToUpper());  // user.Name이 null일 경우 NullReferenceException 발생
     }
     
-    // Array access can fail at runtime
+    // 배열 접근이 런타임에 실패할 수 있음
     public int GetValue(int[] array, int index)
     {
-        return array[index];  // IndexOutOfRangeException possible
+        return array[index];  // IndexOutOfRangeException 발생 가능
     }
 }
 ```
 
-### Rust - Compile-Time Guarantees
+### Rust - 컴파일 타임 보장
 ```rust
 struct Buffer {
     data: Vec<u8>,
@@ -132,72 +131,72 @@ impl Buffer {
     }
     
     fn process_data(&mut self, index: usize) {
-        // Bounds checking can be optimized away by compiler when proven safe
+        // 안전함이 증명되면 컴파일러가 경계 검사를 최적화하여 제거할 수 있음
         if let Some(item) = self.data.get_mut(index) {
-            *item = 42;  // Safe access, proven at compile time
+            *item = 42;  // 컴파일 타임에 안전함이 증명된 접근
         }
-        // Or use indexing with explicit bounds check:
-        // self.data[index] = 42;  // Panics in debug, but memory-safe
+        // 또는 명시적인 경계 검사를 동반한 인덱싱 사용:
+        // self.data[index] = 42;  // 디버그 모드에서 패닉이 발생하지만 메모리 안전은 보장됨
     }
     
-    // Memory leaks impossible - ownership system prevents them
+    // 메모리 누수 불가능 - 소유권 시스템이 이를 방지함
     fn process_with_closure<F>(&mut self, processor: F) 
     where F: FnOnce(&mut Vec<u8>)
     {
         processor(&mut self.data);
-        // When processor goes out of scope, it's automatically cleaned up
-        // No way to create dangling references or memory leaks
+        // processor가 스코프를 벗어나면 자동으로 정리됨
+        // 허공에 뜬 참조나 메모리 누수를 만들 방법이 없음
     }
     
-    // Null pointer dereferences impossible - no null pointers!
+    // Null 포인터 역참조 불가능 - Rust에는 null 포인터가 없음!
     fn process_user(&self, user: &User) {
-        println!("{}", user.name.to_uppercase());  // user.name cannot be null
+        println!("{}", user.name.to_uppercase());  // user.name은 null일 수 없음
     }
     
-    // Array access is bounds-checked or explicitly unsafe
+    // 배열 접근은 경계 검사가 수행되거나 명시적으로 unsafe하게 처리됨
     fn get_value(array: &[i32], index: usize) -> Option<i32> {
-        array.get(index).copied()  // Returns None if out of bounds
+        array.get(index).copied()  // 범위를 벗어나면 None 반환
     }
     
-    // Or explicitly unsafe if you know what you're doing:
+    // 자신이 무엇을 하는지 정확히 알 경우 명시적으로 unsafe 사용 가능:
     /// # Safety
-    /// `index` must be less than `array.len()`.
+    /// `index`는 반드시 `array.len()`보다 작아야 합니다.
     unsafe fn get_value_unchecked(array: &[i32], index: usize) -> i32 {
-        *array.get_unchecked(index)  // Fast but must prove bounds manually
+        *array.get_unchecked(index)  // 빠르지만 경계를 직접 증명해야 함
     }
 }
 
 struct User {
-    name: String,  // String cannot be null in Rust
+    name: String,  // Rust에서 String은 null일 수 없음
 }
 
-// Ownership prevents use-after-free
+// 소유권이 Use-After-Free(해제 후 사용)를 방지함
 fn ownership_example() {
     let data = vec![1, 2, 3, 4, 5];
-    let reference = &data[0];  // Borrow data
+    let reference = &data[0];  // 데이터 빌림
     
-    // drop(data);  // ERROR: cannot drop while borrowed
-    println!("{}", reference);  // This is guaranteed safe
+    // drop(data);  // 에러: 빌려준 동안에는 해제할 수 없음
+    println!("{}", reference);  // 이 코드는 안전함이 보장됨
 }
 
-// Borrowing prevents data races
+// 빌림 시스템이 데이터 경합을 방지함
 fn borrowing_example(data: &mut Vec<i32>) {
-    let first = &data[0];  // Immutable borrow
-    // data.push(6);  // ERROR: cannot mutably borrow while immutably borrowed
-    println!("{}", first);  // Guaranteed no data race
+    let first = &data[0];  // 불변 빌림
+    // data.push(6);  // 에러: 불변으로 빌려준 동안에는 가변으로 빌릴 수 없음
+    println!("{}", first);  // 데이터 경합이 없음을 보장함
 }
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# Runtime Safety"
-        CS_RUNTIME["Runtime Checks"]
-        CS_GC["Garbage Collector"]
-        CS_EXCEPTIONS["Exception Handling"]
-        CS_BOUNDS["Runtime bounds checking"]
-        CS_NULL["Null reference exceptions"]
-        CS_LEAKS["Memory leaks possible"]
-        CS_OVERHEAD["Performance overhead"]
+    subgraph "C# 런타임 안전성"
+        CS_RUNTIME["런타임 체크"]
+        CS_GC["가비지 컬렉터"]
+        CS_EXCEPTIONS["예외 처리"]
+        CS_BOUNDS["런타임 경계 검사"]
+        CS_NULL["Null 참조 예외"]
+        CS_LEAKS["메모리 누수 가능성"]
+        CS_OVERHEAD["성능 오버헤드"]
         
         CS_RUNTIME --> CS_BOUNDS
         CS_RUNTIME --> CS_NULL
@@ -205,14 +204,14 @@ graph TD
         CS_EXCEPTIONS --> CS_OVERHEAD
     end
     
-    subgraph "Rust Compile-Time Safety"
-        RUST_OWNERSHIP["Ownership System"]
-        RUST_BORROWING["Borrow Checker"]
-        RUST_TYPES["Type System"]
-        RUST_ZERO_COST["Zero-cost abstractions"]
-        RUST_NO_NULL["No null pointers"]
-        RUST_NO_LEAKS["No memory leaks"]
-        RUST_FAST["Optimal performance"]
+    subgraph "Rust 컴파일 타임 안전성"
+        RUST_OWNERSHIP["소유권 시스템"]
+        RUST_BORROWING["빌림 검사기"]
+        RUST_TYPES["타입 시스템"]
+        RUST_ZERO_COST["제로 비용 추상화"]
+        RUST_NO_NULL["Null 포인터 없음"]
+        RUST_NO_LEAKS["메모리 누수 없음"]
+        RUST_FAST["최적의 성능"]
         
         RUST_OWNERSHIP --> RUST_NO_LEAKS
         RUST_BORROWING --> RUST_NO_NULL
@@ -230,12 +229,12 @@ graph TD
 
 ---
 
-## Exercises
+## 연습 문제
 
 <details>
-<summary><strong>🏋️ Exercise: Spot the Safety Bug</strong> (click to expand)</summary>
+<summary><strong>🏋️ 실습: 안전 버그 찾아내기</strong> (펼치기)</summary>
 
-This C# code has a subtle safety bug. Identify it, then write the Rust equivalent and explain why the Rust version **won't compile**:
+다음 C# 코드에는 미묘한 안전 버그가 있습니다. 이를 찾아내고, 동일한 기능을 하는 Rust 코드를 작성한 뒤 왜 Rust 버전은 **컴파일되지 않는지** 설명해 보세요.
 
 ```csharp
 public List<int> GetEvenNumbers(List<int> numbers)
@@ -246,7 +245,7 @@ public List<int> GetEvenNumbers(List<int> numbers)
         if (n % 2 == 0)
         {
             result.Add(n);
-            numbers.Remove(n);  // Bug: modifying collection while iterating
+            numbers.Remove(n);  // 버그: 반복문 도중 컬렉션 수정
         }
     }
     return result;
@@ -254,9 +253,9 @@ public List<int> GetEvenNumbers(List<int> numbers)
 ```
 
 <details>
-<summary>🔑 Solution</summary>
+<summary>🔑 해답</summary>
 
-**C# bug**: Modifying `numbers` while iterating throws `InvalidOperationException` at *runtime*. Easy to miss in code review.
+**C# 버그**: 반복문 도중에 `numbers`를 수정하면 *런타임*에 `InvalidOperationException`이 발생합니다. 코드 리뷰에서 놓치기 쉬운 부분입니다.
 
 ```rust
 fn get_even_numbers(numbers: &mut Vec<i32>) -> Vec<i32> {
@@ -265,17 +264,17 @@ fn get_even_numbers(numbers: &mut Vec<i32>) -> Vec<i32> {
         if n % 2 == 0 {
             result.push(n);
             // numbers.retain(|&x| x != n);
-            // ❌ ERROR: cannot borrow `*numbers` as mutable because
-            //    it is also borrowed as immutable (by the iterator)
+            // ❌ 에러: `*numbers`를 가변으로 빌릴 수 없음.
+            //    이미 반복자(iterator)에 의해 불변으로 빌려진 상태이기 때문.
         }
     }
     result
 }
 
-// Idiomatic Rust: use partition or retain
+// 관용적인 Rust 방식: partition이나 retain 사용
 fn get_even_numbers_idiomatic(numbers: &mut Vec<i32>) -> Vec<i32> {
     let evens: Vec<i32> = numbers.iter().copied().filter(|n| n % 2 == 0).collect();
-    numbers.retain(|n| n % 2 != 0); // remove evens after iteration
+    numbers.retain(|n| n % 2 != 0); // 반복이 끝난 후 짝수 제거
     evens
 }
 
@@ -287,12 +286,9 @@ fn main() {
 }
 ```
 
-**Key insight**: Rust's borrow checker prevents the entire *category* of "mutate while iterating" bugs at compile time. C# catches this at runtime; many languages don't catch it at all.
+**핵심 통찰**: Rust의 빌림 검사기는 "반복 중 수정"으로 인해 발생하는 전체 범주의 버그를 컴파일 타임에 차단합니다. C#은 이를 런타임에 잡아내며, 많은 언어들은 아예 잡아내지 못하고 오동작을 일으킵니다.
 
 </details>
 </details>
 
 ***
-
-
-

@@ -1,43 +1,42 @@
-## True Immutability vs Record Illusions
+## 진정한 불변성 vs Record의 환상
 
-> **What you'll learn:** Why C# `record` types aren't truly immutable (mutable fields, reflection bypass),
-> how Rust enforces real immutability at compile time, and when to use interior mutability patterns.
+> **학습 목표:** C#의 `record` 타입이 왜 진정한 의미의 불변이 아닌지(가변 필드, 리플렉션을 통한 우회 등) 알아보고, Rust가 컴파일 타임에 어떻게 실질적인 불변성을 강제하는지, 그리고 내부 가변성(Interior mutability) 패턴은 언제 사용하는지 배웁니다.
 >
-> **Difficulty:** 🟡 Intermediate
+> **Difficulty:** 🟡 중급
 
-### C# Records - Immutability Theater
+### C# Record - 불변성 시늉(Immutability Theater)
 ```csharp
-// C# records look immutable but have escape hatches
+// C# record는 불변처럼 보이지만 탈출구가 존재합니다.
 public record Person(string Name, int Age, List<string> Hobbies);
 
-var person = new Person("John", 30, new List<string> { "reading" });
+var person = new Person("홍길동", 30, new List<string> { "독서" });
 
-// These all "look" like they create new instances:
-var older = person with { Age = 31 };  // New record
-var renamed = person with { Name = "Jonathan" };  // New record
+// 이 코드들은 모두 새로운 인스턴스를 생성하는 것처럼 "보입니다":
+var older = person with { Age = 31 };  // 새로운 record
+var renamed = person with { Name = "고길동" };  // 새로운 record
 
-// But the reference types are still mutable!
-person.Hobbies.Add("gaming");  // Mutates the original!
-Console.WriteLine(older.Hobbies.Count);  // 2 - older person affected!
-Console.WriteLine(renamed.Hobbies.Count); // 2 - renamed person also affected!
+// 하지만 참조 타입 필드는 여전히 가변적입니다!
+person.Hobbies.Add("게임");  // 원본 객체가 수정됨!
+Console.WriteLine(older.Hobbies.Count);  // 2 - 나이가 든 홍길동도 영향을 받음!
+Console.WriteLine(renamed.Hobbies.Count); // 2 - 이름이 바뀐 홍길동도 영향을 받음!
 
-// Init-only properties can still be set via reflection
+// Init-only 프로퍼티조차 리플렉션을 통해 설정될 수 있습니다.
 typeof(Person).GetProperty("Age")?.SetValue(person, 25);
 
-// Collection expressions help but don't solve the fundamental issue
+// 컬렉션 표현식을 써도 근본적인 문제는 해결되지 않습니다.
 public record BetterPerson(string Name, int Age, IReadOnlyList<string> Hobbies);
 
-var betterPerson = new BetterPerson("Jane", 25, new List<string> { "painting" });
-// Still mutable via casting: 
-((List<string>)betterPerson.Hobbies).Add("hacking the system");
+var betterPerson = new BetterPerson("성춘향", 25, new List<string> { "그림" });
+// 캐스팅을 통해 여전히 수정 가능합니다: 
+((List<string>)betterPerson.Hobbies).Add("시스템 해킹");
 
-// Even "immutable" collections aren't truly immutable
+// 심지어 "Immutable" 컬렉션도 진정한 의미의 불변은 아닙니다.
 using System.Collections.Immutable;
 public record SafePerson(string Name, int Age, ImmutableList<string> Hobbies);
-// This is better, but requires discipline and has performance overhead
+// 이것이 더 낫긴 하지만, 팀 차원의 규율이 필요하며 성능 오버헤드가 따릅니다.
 ```
 
-### Rust - True Immutability by Default
+### Rust - 기본적으로 적용되는 진정한 불변성
 ```rust
 #[derive(Debug, Clone)]
 struct Person {
@@ -47,62 +46,62 @@ struct Person {
 }
 
 let person = Person {
-    name: "John".to_string(),
+    name: "홍길동".to_string(),
     age: 30,
-    hobbies: vec!["reading".to_string()],
+    hobbies: vec!["독서".to_string()],
 };
 
-// This simply won't compile:
-// person.age = 31;  // ERROR: cannot assign to immutable field
-// person.hobbies.push("gaming".to_string());  // ERROR: cannot borrow as mutable
+// 다음 코드는 컴파일조차 되지 않습니다:
+// person.age = 31;  // 에러: 불변 필드에 값을 할당할 수 없음
+// person.hobbies.push("게임".to_string());  // 에러: 가변으로 빌릴 수 없음
 
-// To modify, you must explicitly opt-in with 'mut':
+// 값을 수정하려면 'mut'을 통해 명시적으로 선택해야 합니다:
 let mut older_person = person.clone();
-older_person.age = 31;  // Now it's clear this is mutation
+older_person.age = 31;  // 이제 이것이 상태 변경(Mutation)임이 명확해집니다.
 
-// Or use functional update patterns:
+// 또는 함수형 업데이트 패턴을 사용합니다:
 let renamed = Person {
-    name: "Jonathan".to_string(),
-    ..person  // Copies other fields (move semantics apply)
+    name: "고길동".to_string(),
+    ..person  // 다른 필드들을 복사함 (이동 의미론이 적용됨)
 };
 
-// The original is guaranteed unchanged (until moved):
-println!("{:?}", person.hobbies);  // Always ["reading"] - immutable
+// 원본은 (이동되지 않는 한) 절대 변하지 않음을 보장받습니다:
+println!("{:?}", person.hobbies);  // 항상 ["독서"] - 불변 유지
 
-// Structural sharing with efficient immutable data structures
+// 효율적인 불변 데이터 구조를 통한 구조적 공유(Structural sharing)
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 struct EfficientPerson {
     name: String,
     age: u32,
-    hobbies: Rc<Vec<String>>,  // Shared, immutable reference
+    hobbies: Rc<Vec<String>>,  // 공유되는 불변 참조
 }
 
-// Creating new versions shares data efficiently
+// 새로운 버전을 생성할 때 데이터를 효율적으로 공유합니다.
 let person1 = EfficientPerson {
-    name: "Alice".to_string(),
+    name: "앨리스".to_string(),
     age: 30,
-    hobbies: Rc::new(vec!["reading".to_string(), "cycling".to_string()]),
+    hobbies: Rc::new(vec!["독서".to_string(), "자전거".to_string()]),
 };
 
 let person2 = EfficientPerson {
-    name: "Bob".to_string(),
+    name: "밥".to_string(),
     age: 25,
-    hobbies: Rc::clone(&person1.hobbies),  // Shared reference, no deep copy
+    hobbies: Rc::clone(&person1.hobbies),  // 깊은 복사 없이 참조만 공유
 };
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# Records - Shallow Immutability"
+    subgraph "C# Record - 얕은 불변성(Shallow Immutability)"
         CS_RECORD["record Person(...)"]
-        CS_WITH["with expressions"]
-        CS_SHALLOW["⚠️ Only top-level immutable"]
-        CS_REF_MUT["❌ Reference types still mutable"]
-        CS_REFLECTION["❌ Reflection can bypass"]
-        CS_RUNTIME["❌ Runtime surprises"]
-        CS_DISCIPLINE["😓 Requires team discipline"]
+        CS_WITH["with 표현식"]
+        CS_SHALLOW["⚠️ 최상위 레벨만 불변"]
+        CS_REF_MUT["❌ 참조 타입은 여전히 가변적"]
+        CS_REFLECTION["❌ 리플렉션으로 우회 가능"]
+        CS_RUNTIME["❌ 런타임의 예상치 못한 동작"]
+        CS_DISCIPLINE["😓 팀의 엄격한 규율 필요"]
         
         CS_RECORD --> CS_WITH
         CS_WITH --> CS_SHALLOW
@@ -112,14 +111,14 @@ graph TD
         CS_RUNTIME --> CS_DISCIPLINE
     end
     
-    subgraph "Rust - True Immutability"
+    subgraph "Rust - 진정한 불변성"
         RUST_STRUCT["struct Person { ... }"]
-        RUST_DEFAULT["✅ Immutable by default"]
-        RUST_COMPILE["✅ Compile-time enforcement"]
-        RUST_MUT["🔒 Explicit 'mut' required"]
-        RUST_MOVE["🔄 Move semantics"]
-        RUST_ZERO["⚡ Zero runtime overhead"]
-        RUST_SAFE["🛡️ Memory safe"]
+        RUST_DEFAULT["✅ 기본적으로 불변"]
+        RUST_COMPILE["✅ 컴파일 타임에 강제"]
+        RUST_MUT["🔒 명시적인 'mut' 필요"]
+        RUST_MOVE["🔄 이동 의미론(Move semantics)"]
+        RUST_ZERO["⚡ 런타임 오버헤드 제로"]
+        RUST_SAFE["🛡️ 메모리 안전성 확보"]
         
         RUST_STRUCT --> RUST_DEFAULT
         RUST_DEFAULT --> RUST_COMPILE
@@ -139,27 +138,27 @@ graph TD
 
 ---
 
-## Exercises
+## 연습 문제
 
 <details>
-<summary><strong>🏋️ Exercise: Prove the Immutability</strong> (click to expand)</summary>
+<summary><strong>🏋️ 실습: 불변성 증명하기</strong> (펼치기)</summary>
 
-A C# colleague claims their `record` is immutable. Translate this C# code to Rust and explain why Rust's version is truly immutable:
+C# 동료가 자신의 `record`는 불변이라고 주장합니다. 다음 C# 코드를 Rust로 번역하고, 왜 Rust 버전이 진정으로 불변인지 설명해 보세요:
 
 ```csharp
 public record Config(string Host, int Port, List<string> AllowedOrigins);
 
 var config = new Config("localhost", 8080, new List<string> { "example.com" });
-// "Immutable" record... but:
-config.AllowedOrigins.Add("evil.com"); // Compiles! List is mutable.
+// "불변" record지만...
+config.AllowedOrigins.Add("evil.com"); // 컴파일이 됨! List는 가변적임.
 ```
 
-1. Create an equivalent Rust struct that is **truly** immutable
-2. Show that attempting to mutate `allowed_origins` is a **compile error**
-3. Write a function that creates a modified copy (new host) without mutation
+1. **진정으로** 불변인 대응 구조체를 Rust로 만드세요.
+2. `allowed_origins`를 수정하려는 시도가 **컴파일 에러**를 발생시킴을 보여주세요.
+3. 상태 변경(Mutation) 없이 수정된 복사본(새로운 호스트)을 생성하는 함수를 작성하세요.
 
 <details>
-<summary>🔑 Solution</summary>
+<summary>🔑 해답</summary>
 
 ```rust
 #[derive(Debug, Clone)]
@@ -186,19 +185,17 @@ fn main() {
     };
 
     // config.allowed_origins.push("evil.com".into());
-    // ❌ ERROR: cannot borrow `config.allowed_origins` as mutable
+    // ❌ 에러: `config.allowed_origins`를 가변으로 빌릴 수 없음
 
     let production = config.with_host("prod.example.com");
-    println!("Dev: {:?}", config);       // original unchanged
-    println!("Prod: {:?}", production);  // new copy with different host
+    println!("개발 환경: {:?}", config);       // 원본은 변경되지 않음
+    println!("운영 환경: {:?}", production);  // 호스트가 다른 새로운 복사본
 }
 ```
 
-**Key insight**: In Rust, `let config = ...` (no `mut`) makes the *entire value tree* immutable — including nested `Vec`. C# records only make the *reference* immutable, not the contents.
+**핵심 통찰**: Rust에서 `let config = ...` (`mut` 없음)는 내포된 `Vec`을 포함하여 *전체 값 트리*를 불변으로 만듭니다. C# record는 *참조* 자체만 불변으로 만들 뿐, 그 내용물까지 보호하지는 못합니다.
 
 </details>
 </details>
 
 ***
-
-

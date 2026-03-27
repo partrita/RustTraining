@@ -1,96 +1,96 @@
-# Rust Training for C# Programmers
+# C# 프로그래머를 위한 Rust 교육 (Rust Training for C# Programmers)
 
-A comprehensive guide to learning Rust for developers with C# experience, focusing on the conceptual shifts and practical differences between the two languages.
+C# 경험이 있는 개발자를 대상으로, 두 언어 간의 개념적 변화와 실질적인 차이점에 초점을 맞춘 포괄적인 Rust 학습 가이드입니다.
 
-## Table of Contents
+## 목차 (Table of Contents)
 
-### 1. Introduction and Philosophy
-- [Language Philosophy Comparison](#language-philosophy-comparison)
-- [Memory Management: GC vs RAII](#memory-management-gc-vs-raii)
-- [Performance Characteristics](#performance-characteristics)
+### 1. 서론 및 철학 (Introduction and Philosophy)
+- [언어 철학 비교](#언어-철학-비교)
+- [메모리 관리: GC vs RAII](#메모리-관리-gc-vs-raii)
+- [성능 특성](#성능-특성)
 
-### 2. Type System Differences
-- [Null Safety: Nullable<T> vs Option<T>](#null-safety-nullablet-vs-optiont)
-- [Value Types vs Reference Types vs Ownership](#value-types-vs-reference-types-vs-ownership)
-- [Algebraic Data Types vs C# Unions](#algebraic-data-types-vs-c-unions)
-- [Exhaustive Pattern Matching: Compiler Guarantees vs Runtime Errors](#exhaustive-pattern-matching-compiler-guarantees-vs-runtime-errors)
-- [True Immutability vs Record Illusions](#true-immutability-vs-record-illusions)
-- [Memory Safety: Runtime Checks vs Compile-Time Proofs](#memory-safety-runtime-checks-vs-compile-time-proofs)
+### 2. 타입 시스템의 차이 (Type System Differences)
+- [널 안전성: Nullable<T> vs Option<T>](#널-안전성-nullablet-vs-optiont)
+- [값 타입 vs 참조 타입 vs 소유권](#값-타입-vs-참조-타입-vs-소유권)
+- [대수적 데이터 타입 vs C# 공용체](#대수적-데이터-타입-vs-c-공용체)
+- [철저한 패턴 매칭: 컴파일러 보장 vs 런타임 에러](#철저한-패턴-매칭-컴파일러-보장-vs-런타임-에러)
+- [진정한 불변성 vs 레코드의 환상](#진정한-불변성-vs-레코드의-환상)
+- [메모리 안전성: 런타임 체크 vs 컴파일 타임 증명](#메모리-안전성-런타임-체크-vs-컴파일-타임-증명)
 
-### 3. Object-Oriented vs Functional Paradigms
-- [Inheritance vs Composition](#inheritance-vs-composition)
-- [Interfaces vs Traits](#interfaces-vs-traits)
-- [Virtual Methods vs Static Dispatch](#virtual-methods-vs-static-dispatch)
-- [Sealed Classes vs Rust Immutability](#sealed-classes-vs-rust-immutability)
+### 3. 객체 지향 vs 함수형 패러다임 (Object-Oriented vs Functional Paradigms)
+- [상속 vs 구성](#상속-vs-구성)
+- [인터페이스 vs 트레이트](#인터페이스-vs-트레이트)
+- [가상 메서드 vs 정적 디스패치](#가상-메서드-vs-정적-디스패치)
+- [Sealed 클래스 vs Rust 불변성](#sealed-클래스-vs-rust-불변성)
 
-### 4. Error Handling Philosophy
-- [Exceptions vs Result<T, E>](#exceptions-vs-resultt-e)
-- [Try-Catch vs Pattern Matching](#try-catch-vs-pattern-matching)
-- [Error Propagation Patterns](#error-propagation-patterns)
+### 4. 에러 처리 철학 (Error Handling Philosophy)
+- [예외 vs Result<T, E>](#예외-vs-resultt-e)
+- [Try-Catch vs 패턴 매칭](#try-catch-vs-패턴-매칭)
+- [에러 전파 패턴](#에러-전파-패턴)
 
-### 5. Concurrency and Safety
-- [Thread Safety: Convention vs Type System Guarantees](#thread-safety-convention-vs-type-system-guarantees)
-- [async/await Comparison](#asyncawait-comparison)
-- [Data Race Prevention](#data-race-prevention)
+### 5. 동시성 및 안전성 (Concurrency and Safety)
+- [스레드 안전성: 관례 vs 타입 시스템 보장](#스레드-안전성-관례-vs-타입-시스템-보장)
+- [async/await 비교](#asyncawait-비교)
+- [데이터 경합(Data Race) 예방](#데이터-경합-예방)
 
-### 6. Collections and Iterators
-- [LINQ vs Rust Iterators](#linq-vs-rust-iterators)
-- [Collection Ownership](#collection-ownership)
-- [Lazy Evaluation Patterns](#lazy-evaluation-patterns)
+### 6. 컬렉션 및 반복자 (Collections and Iterators)
+- [LINQ vs Rust 반복자](#linq-vs-rust-반복자)
+- [컬렉션 소유권](#컬렉션-소유권)
+- [지연 평가 패턴](#지연-평가-패턴)
 
-### 7. Generics and Constraints
-- [Generic Constraints: where vs trait bounds](#generic-constraints-where-vs-trait-bounds)
-- [Variance in Generics](#variance-in-generics)
-- [Higher-Kinded Types](#higher-kinded-types)
+### 7. 제네릭 및 제약 조건 (Generics and Constraints)
+- [제네릭 제약 조건: where vs 트레이트 바운드](#제네릭-제약-조건-where-vs-트레이트-바운드)
+- [제네릭 가변성(Variance)](#제네릭-가변성)
+- [고차 타입(Higher-Kinded Types)](#고차-타입)
 
-### 8. Practical Migration Patterns
-- [Incremental Adoption Strategy](#incremental-adoption-strategy)
-- [C# to Rust Concept Mapping](#c-to-rust-concept-mapping)
-- [Team Adoption Timeline](#team-adoption-timeline)
-- [Common C# Patterns in Rust](#common-c-patterns-in-rust)
-- [Ecosystem Comparison](#ecosystem-comparison)
-- [Testing and Documentation](#testing-and-documentation)
+### 8. 실전 마이그레이션 패턴 (Practical Migration Patterns)
+- [단계적 도입 전략](#단계적-도입-전략)
+- [C#에서 Rust로의 개념 매핑](#c에서-rust로의-개념-매핑)
+- [팀 도입 타임라인](#팀-도입-타임라인)
+- [Rust에서의 일반적인 C# 패턴 구현](#rust에서의-일반적인-c-패턴-구현)
+- [생태계 비교](#생태계-비교)
+- [테스트 및 문서화](#테스트 및-문서화)
 
-### 9. Performance and Adoption
-- [Performance Comparison: Managed vs Native](#performance-comparison-managed-vs-native)
-- [When to Choose Each Language](#when-to-choose-each-language)
+### 9. 성능 및 도입 (Performance and Adoption)
+- [성능 비교: 관리형 vs 네이티브](#성능-비교-관리형-vs-네이티브)
+- [언어 선택 기준](#언어-선택-기준)
 
-### 10. Advanced Topics
-- [Unsafe Code: When and Why](#unsafe-code-when-and-why)
-- [Interop Considerations](#interop-considerations)
-- [Performance Optimization](#performance-optimization)
+### 10. 고급 주제 (Advanced Topics)
+- [Unsafe 코드: 시기와 이유](#unsafe-코드-시기와-이유)
+- [상호 운용성(Interop) 고려 사항](#상호-운용성-고려-사항)
+- [성능 최적화](#성능-최적화)
 
-### 11. Best Practices for C# Developers
-- [Idiomatic Rust for C# Developers](#idiomatic-rust-for-c-developers)
-- [Common Mistakes and Solutions](#common-mistakes-and-solutions)
-- [Essential Crates for C# Developers](#essential-crates-for-c-developers)
+### 11. C# 개발자를 위한 권장 사례 (Best Practices for C# Developers)
+- [C# 개발자를 위한 관용적(Idiomatic) Rust](#c-개발자를-위한-관용적-rust)
+- [흔한 실수와 해결책](#흔한-실수와-해결책)
+- [C# 개발자를 위한 필수 크레이트](#c-개발자를-위한-필수-크레이트)
 
 ***
 
-## Language Philosophy Comparison
+## 언어 철학 비교 (Language Philosophy Comparison)
 
-### C# Philosophy
-- **Productivity first**: Rich tooling, extensive framework, "pit of success"
-- **Managed runtime**: Garbage collection handles memory automatically
-- **Enterprise-focused**: Strong typing with reflection, extensive standard library
-- **Object-oriented**: Classes, inheritance, interfaces as primary abstractions
+### C# 철학
+- **생산성 우선**: 풍부한 도구, 방대한 프레임워크, "성공의 구덩이(pit of success)"
+- **관리형 런타임**: 가비지 컬렉션(GC)이 메모리를 자동으로 관리
+- **엔터프라이즈 중심**: 리플렉션을 활용한 강력한 타입 시스템, 방대한 표준 라이브러리
+- **객체 지향**: 클래스, 상속, 인터페이스를 주요 추상화 수단으로 사용
 
-### Rust Philosophy
-- **Performance without sacrifice**: Zero-cost abstractions, no runtime overhead
-- **Memory safety**: Compile-time guarantees prevent crashes and security vulnerabilities
-- **Systems programming**: Direct hardware access with high-level abstractions
-- **Functional + systems**: Immutability by default, ownership-based resource management
+### Rust 철학
+- **희생 없는 성능**: 제로 비용 추상화(zero-cost abstractions), 런타임 오버헤드 없음
+- **메모리 안전성**: 컴파일 타임 보장을 통해 크래시와 보안 취약점 예방
+- **시스템 프로그래밍**: 고수준 추상화를 유지하면서 하드웨어에 직접 접근 가능
+- **함수형 + 시스템**: 기본적으로 불변성 지향, 소유권 기반 리소스 관리
 
 ```mermaid
 graph TD
-    subgraph "C# Development Model"
-        CS_CODE["C# Source Code<br/>Classes, Methods, Properties"]
-        CS_COMPILE["C# Compiler<br/>(csc.exe)"]
-        CS_IL["Intermediate Language<br/>(IL bytecode)"]
-        CS_RUNTIME[".NET Runtime<br/>(CLR)"]
-        CS_JIT["Just-In-Time Compiler"]
-        CS_NATIVE["Native Machine Code"]
-        CS_GC["Garbage Collector<br/>(Memory management)"]
+    subgraph "C# 개발 모델"
+        CS_CODE["C# 소스 코드<br/>클래스, 메서드, 속성"]
+        CS_COMPILE["C# 컴파일러<br/>(csc.exe)"]
+        CS_IL["중간 언어<br/>(IL bytecode)"]
+        CS_RUNTIME[".NET 런타임<br/>(CLR)"]
+        CS_JIT["JIT 컴파일러"]
+        CS_NATIVE["네이티브 기계어"]
+        CS_GC["가비지 컬렉터<br/>(메모리 관리)"]
         
         CS_CODE --> CS_COMPILE
         CS_COMPILE --> CS_IL
@@ -99,20 +99,20 @@ graph TD
         CS_JIT --> CS_NATIVE
         CS_RUNTIME --> CS_GC
         
-        CS_BENEFITS["[OK] Fast development<br/>[OK] Rich ecosystem<br/>[OK] Automatic memory management<br/>[ERROR] Runtime overhead<br/>[ERROR] GC pauses<br/>[ERROR] Platform dependency"]
+        CS_BENEFITS["[OK] 빠른 개발 속도<br/>[OK] 풍부한 생태계<br/>[OK] 자동 메모리 관리<br/>[ERROR] 런타임 오버헤드<br/>[ERROR] GC 중단(pause)<br/>[ERROR] 플랫폼 의존성"]
     end
     
-    subgraph "Rust Development Model"
-        RUST_CODE["Rust Source Code<br/>Structs, Enums, Functions"]
-        RUST_COMPILE["Rust Compiler<br/>(rustc)"]
-        RUST_NATIVE["Native Machine Code<br/>(Direct compilation)"]
-        RUST_ZERO["Zero Runtime<br/>(No VM, No GC)"]
+    subgraph "Rust 개발 모델"
+        RUST_CODE["Rust 소스 코드<br/>구조체, 열거형, 함수"]
+        RUST_COMPILE["Rust 컴파일러<br/>(rustc)"]
+        RUST_NATIVE["네이티브 기계어<br/>(직접 컴파일)"]
+        RUST_ZERO["제로 런타임<br/>(VM 없음, GC 없음)"]
         
         RUST_CODE --> RUST_COMPILE
         RUST_COMPILE --> RUST_NATIVE
         RUST_NATIVE --> RUST_ZERO
         
-        RUST_BENEFITS["[OK] Maximum performance<br/>[OK] Memory safety<br/>[OK] No runtime dependencies<br/>[ERROR] Steeper learning curve<br/>[ERROR] Longer compile times<br/>[ERROR] More explicit code"]
+        RUST_BENEFITS["[OK] 최대 성능<br/>[OK] 메모리 안전성<br/>[OK] 런타임 의존성 없음<br/>[ERROR] 가파른 학습 곡선<br/>[ERROR] 긴 컴파일 시간<br/>[ERROR] 더 명시적인 코드"]
     end
     
     style CS_BENEFITS fill:#e3f2fd
@@ -123,11 +123,11 @@ graph TD
 
 ***
 
-## Memory Management: GC vs RAII
+## 메모리 관리: GC vs RAII (Memory Management: GC vs RAII)
 
-### C# Garbage Collection
+### C# 가비지 컬렉션 (Garbage Collection)
 ```csharp
-// C# - Automatic memory management
+// C# - 자동 메모리 관리
 public class Person
 {
     public string Name { get; set; }
@@ -135,20 +135,20 @@ public class Person
     
     public void AddHobby(string hobby)
     {
-        Hobbies.Add(hobby);  // Memory allocated automatically
+        Hobbies.Add(hobby);  // 메모리가 자동으로 할당됨
     }
     
-    // No explicit cleanup needed - GC handles it
-    // But IDisposable pattern for resources
+    // 명시적인 정리가 필요 없음 - GC가 처리함
+    // 단, 리소스 관리를 위해 IDisposable 패턴 사용
 }
 
 using var file = new FileStream("data.txt", FileMode.Open);
-// 'using' ensures Dispose() is called
+// 'using'은 Dispose() 호출을 보장함
 ```
 
-### Rust Ownership and RAII
+### Rust 소유권 및 RAII (Ownership and RAII)
 ```rust
-// Rust - Compile-time memory management
+// Rust - 컴파일 타임 메모리 관리
 pub struct Person {
     name: String,
     hobbies: Vec<String>,
@@ -156,29 +156,29 @@ pub struct Person {
 
 impl Person {
     pub fn add_hobby(&mut self, hobby: String) {
-        self.hobbies.push(hobby);  // Memory management tracked at compile time
+        self.hobbies.push(hobby);  // 컴파일 타임에 메모리 관리가 추적됨
     }
     
-    // Drop trait automatically implemented - cleanup is guaranteed
+    // Drop 트레이트가 자동 구현됨 - 확실한 정리가 보장됨
 }
 
-// RAII - Resource Acquisition Is Initialization
+// RAII - 리소스 획득은 초기화 (Resource Acquisition Is Initialization)
 {
     let file = std::fs::File::open("data.txt")?;
-    // File automatically closed when 'file' goes out of scope
-    // No 'using' statement needed - handled by type system
+    // 'file'이 범위를 벗어날 때 파일이 자동으로 닫힘
+    // 'using' 문이 필요 없음 - 타입 시스템에 의해 처리됨
 }
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# Memory Management"
-        CS_ALLOC["Object Allocation<br/>new Person()"]
-        CS_HEAP["Managed Heap"]
-        CS_REF["References point to heap"]
-        CS_GC_CHECK["GC periodically checks<br/>for unreachable objects"]
-        CS_SWEEP["Mark and sweep<br/>collection"]
-        CS_PAUSE["[ERROR] GC pause times"]
+    subgraph "C# 메모리 관리"
+        CS_ALLOC["객체 할당<br/>new Person()"]
+        CS_HEAP["관리형 힙"]
+        CS_REF["참조가 힙을 가리킴"]
+        CS_GC_CHECK["GC가 주기적으로<br/>도달 불가능한 객체 확인"]
+        CS_SWEEP["Mark and sweep<br/>수집"]
+        CS_PAUSE["[ERROR] GC 중단 시간"]
         
         CS_ALLOC --> CS_HEAP
         CS_HEAP --> CS_REF
@@ -186,22 +186,22 @@ graph TD
         CS_GC_CHECK --> CS_SWEEP
         CS_SWEEP --> CS_PAUSE
         
-        CS_ISSUES["[ERROR] Non-deterministic cleanup<br/>[ERROR] Memory pressure<br/>[ERROR] Finalization complexity<br/>[OK] Easy to use"]
+        CS_ISSUES["[ERROR] 비결정적 정리<br/>[ERROR] 메모리 압박<br/>[ERROR] 종료화(Finalization) 복잡성<br/>[OK] 사용하기 쉬움"]
     end
     
-    subgraph "Rust Ownership System"
-        RUST_ALLOC["Value Creation<br/>Person { ... }"]
-        RUST_OWNER["Single owner<br/>on stack or heap"]
-        RUST_BORROW["Borrowing system<br/>&T, &mut T"]
-        RUST_SCOPE["Scope-based cleanup<br/>Drop trait"]
-        RUST_COMPILE["Compile-time verification"]
+    subgraph "Rust 소유권 시스템"
+        RUST_ALLOC["값 생성<br/>Person { ... }"]
+        RUST_OWNER["스택 또는 힙의<br/>단일 소유자"]
+        RUST_BORROW["빌림 시스템<br/>&T, &mut T"]
+        RUST_SCOPE["범위 기반 정리<br/>Drop 트레이트"]
+        RUST_COMPILE["컴파일 타임 검증"]
         
         RUST_ALLOC --> RUST_OWNER
         RUST_OWNER --> RUST_BORROW
         RUST_BORROW --> RUST_SCOPE
         RUST_SCOPE --> RUST_COMPILE
         
-        RUST_BENEFITS["[OK] Deterministic cleanup<br/>[OK] Zero runtime cost<br/>[OK] No memory leaks<br/>[ERROR] Learning curve"]
+        RUST_BENEFITS["[OK] 결정적 정리<br/>[OK] 제로 런타임 비용<br/>[OK] 메모리 누수 없음<br/>[ERROR] 학습 곡선"]
     end
     
     style CS_ISSUES fill:#ffebee
@@ -212,34 +212,34 @@ graph TD
 
 ***
 
-## Null Safety: Nullable<T> vs Option<T>
+## 널 안전성: Nullable<T> vs Option<T> (Null Safety)
 
-### C# Null Handling Evolution
+### C# 널 처리의 진화 (C# Null Handling Evolution)
 ```csharp
-// C# - Traditional null handling (error-prone)
+// C# - 전통적인 널 처리 (에러 발생 가능성이 높음)
 public class User
 {
-    public string Name { get; set; }  // Can be null!
-    public string Email { get; set; } // Can be null!
+    public string Name { get; set; }  // null일 수 있음!
+    public string Email { get; set; } // null일 수 있음!
 }
 
 public string GetUserDisplayName(User user)
 {
-    if (user?.Name != null)  // Null conditional operator
+    if (user?.Name != null)  // 널 조건부 연산자
     {
         return user.Name;
     }
     return "Unknown User";
 }
 
-// C# 8+ Nullable Reference Types
+// C# 8+ Nullable 참조 타입
 public class User
 {
     public string Name { get; set; }    // Non-nullable
-    public string? Email { get; set; }  // Explicitly nullable
+    public string? Email { get; set; }  // 명시적 nullable
 }
 
-// C# Nullable<T> for value types
+// C# 값 타입을 위한 Nullable<T>
 int? maybeNumber = GetNumber();
 if (maybeNumber.HasValue)
 {
@@ -247,18 +247,18 @@ if (maybeNumber.HasValue)
 }
 ```
 
-### Rust Option<T> System
+### Rust Option<T> 시스템
 ```rust
-// Rust - Explicit null handling with Option<T>
+// Rust - Option<T>를 사용한 명시적 널 처리
 #[derive(Debug)]
 pub struct User {
-    name: String,           // Never null
-    email: Option<String>,  // Explicitly optional
+    name: String,           // 절대 null일 수 없음
+    email: Option<String>,  // 명시적으로 선택적임
 }
 
 impl User {
     pub fn get_display_name(&self) -> &str {
-        &self.name  // No null check needed - guaranteed to exist
+        &self.name  // 널 체크 불필요 - 존재함이 보장됨
     }
     
     pub fn get_email_or_default(&self) -> String {
@@ -269,41 +269,41 @@ impl User {
     }
 }
 
-// Pattern matching forces handling of None case
+// 패턴 매칭은 None 케이스의 처리를 강제함
 fn handle_optional_user(user: Option<User>) {
     match user {
-        Some(u) => println!("User: {}", u.get_display_name()),
-        None => println!("No user found"),
-        // Compiler error if None case is not handled!
+        Some(u) => println!("사용자: {}", u.get_display_name()),
+        None => println!("사용자를 찾을 수 없음"),
+        // None 케이스를 처리하지 않으면 컴파일 에러 발생!
     }
 }
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# Null Handling Evolution"
-        CS_NULL["Traditional: string name<br/>[ERROR] Can be null"]
-        CS_NULLABLE["Nullable<T>: int? value<br/>[OK] Explicit for value types"]
-        CS_NRT["Nullable Reference Types<br/>string? name<br/>[WARNING] Compile-time warnings only"]
+    subgraph "C# 널 처리의 진화"
+        CS_NULL["전통적: string name<br/>[ERROR] null 가능"]
+        CS_NULLABLE["Nullable<T>: int? value<br/>[OK] 값 타입에 대해 명시적"]
+        CS_NRT["Nullable 참조 타입<br/>string? name<br/>[WARNING] 컴파일 타임 경고만 제공"]
         
-        CS_RUNTIME["Runtime NullReferenceException<br/>[ERROR] Can still crash"]
+        CS_RUNTIME["런타임 NullReferenceException<br/>[ERROR] 여전히 크래시 발생 가능"]
         CS_NULL --> CS_RUNTIME
         CS_NRT -.-> CS_RUNTIME
         
-        CS_CHECKS["Manual null checks<br/>if (obj?.Property != null)"]
+        CS_CHECKS["수동 널 체크<br/>if (obj?.Property != null)"]
     end
     
-    subgraph "Rust Option<T> System"
+    subgraph "Rust Option<T> 시스템"
         RUST_OPTION["Option<T><br/>Some(value) | None"]
-        RUST_FORCE["Compiler forces handling<br/>[OK] Cannot ignore None"]
-        RUST_MATCH["Pattern matching<br/>match option { ... }"]
-        RUST_METHODS["Rich API<br/>.map(), .unwrap_or(), .and_then()"]
+        RUST_FORCE["컴파일러가 처리 강제<br/>[OK] None을 무시할 수 없음"]
+        RUST_MATCH["패턴 매칭<br/>match option { ... }"]
+        RUST_METHODS["풍부한 API<br/>.map(), .unwrap_or(), .and_then()"]
         
         RUST_OPTION --> RUST_FORCE
         RUST_FORCE --> RUST_MATCH
         RUST_FORCE --> RUST_METHODS
         
-        RUST_SAFE["Compile-time null safety<br/>[OK] No null pointer exceptions"]
+        RUST_SAFE["컴파일 타임 널 안전성<br/>[OK] 널 포인터 예외 없음"]
         RUST_MATCH --> RUST_SAFE
         RUST_METHODS --> RUST_SAFE
     end
@@ -316,11 +316,11 @@ graph TD
 
 ***
 
-## Algebraic Data Types vs C# Unions
+## 대수적 데이터 타입 vs C# 공용체 (Algebraic Data Types vs C# Unions)
 
-### C# Discriminated Unions (Limited)
+### C# 판별 공용체 (상속을 이용한 제한적 지원)
 ```csharp
-// C# - Limited union support with inheritance
+// C# - 상속을 이용한 제한적 공용체 지원
 public abstract class Result
 {
     public abstract T Match<T>(Func<Success, T> onSuccess, Func<Error, T> onError);
@@ -344,7 +344,7 @@ public class Error : Result
         => onError(this);
 }
 
-// C# 9+ Records with pattern matching (better)
+// C# 9+ 레코드와 패턴 매칭 (더 나은 방식)
 public abstract record Shape;
 public record Circle(double Radius) : Shape;
 public record Rectangle(double Width, double Height) : Shape;
@@ -353,13 +353,13 @@ public static double Area(Shape shape) => shape switch
 {
     Circle(var radius) => Math.PI * radius * radius,
     Rectangle(var width, var height) => width * height,
-    _ => throw new ArgumentException("Unknown shape")  // [ERROR] Runtime error possible
+    _ => throw new ArgumentException("알 수 없는 모양")  // [ERROR] 런타임 에러 가능성
 };
 ```
 
-### Rust Algebraic Data Types (Enums)
+### Rust 대수적 데이터 타입 (열거형)
 ```rust
-// Rust - True algebraic data types with exhaustive pattern matching
+// Rust - 철저한 패턴 매칭을 지원하는 진정한 대수적 데이터 타입
 #[derive(Debug, Clone)]
 pub enum Result<T, E> {
     Ok(T),
@@ -379,19 +379,19 @@ impl Shape {
             Shape::Circle { radius } => std::f64::consts::PI * radius * radius,
             Shape::Rectangle { width, height } => width * height,
             Shape::Triangle { base, height } => 0.5 * base * height,
-            // [OK] Compiler error if any variant is missing!
+            // [OK] 변형(variant) 중 하나라도 누락되면 컴파일 에러 발생!
         }
     }
 }
 
-// Advanced: Enums can hold different types
+// 심화: 열거형은 서로 다른 타입을 가질 수 있음
 #[derive(Debug)]
 pub enum Value {
     Integer(i64),
     Float(f64),
     Text(String),
     Boolean(bool),
-    List(Vec<Value>),  // Recursive types!
+    List(Vec<Value>),  // 재귀적 타입!
 }
 
 impl Value {
@@ -409,13 +409,13 @@ impl Value {
 
 ```mermaid
 graph TD
-    subgraph "C# Discriminated Unions (Workarounds)"
+    subgraph "C# 판별 공용체 (우회 방법)"
         CS_ABSTRACT["abstract class Result"]
         CS_SUCCESS["class Success : Result"]
         CS_ERROR["class Error : Result"]
-        CS_MATCH["Manual Match method<br/>or switch expressions"]
-        CS_RUNTIME["[ERROR] Runtime exceptions<br/>for missing cases"]
-        CS_HEAP["[ERROR] Heap allocation<br/>for class inheritance"]
+        CS_MATCH["수동 Match 메서드<br/>또는 switch 표현식"]
+        CS_RUNTIME["[ERROR] 누락된 케이스에 대해<br/>런타임 예외 발생"]
+        CS_HEAP["[ERROR] 클래스 상속으로 인한<br/>힙 할당"]
         
         CS_ABSTRACT --> CS_SUCCESS
         CS_ABSTRACT --> CS_ERROR
@@ -425,13 +425,13 @@ graph TD
         CS_ABSTRACT --> CS_HEAP
     end
     
-    subgraph "Rust Algebraic Data Types"
+    subgraph "Rust 대수적 데이터 타입"
         RUST_ENUM["enum Shape { ... }"]
         RUST_VARIANTS["Circle { radius }<br/>Rectangle { width, height }<br/>Triangle { base, height }"]
         RUST_MATCH["match shape { ... }"]
-        RUST_EXHAUSTIVE["[OK] Exhaustive checking<br/>Compile-time guarantee"]
-        RUST_STACK["[OK] Stack allocation<br/>Efficient memory use"]
-        RUST_ZERO["[OK] Zero-cost abstraction"]
+        RUST_EXHAUSTIVE["[OK] 철저한 체크<br/>컴파일 타임 보장"]
+        RUST_STACK["[OK] 스택 할당<br/>효율적인 메모리 사용"]
+        RUST_ZERO["[OK] 제로 비용 추상화"]
         
         RUST_ENUM --> RUST_VARIANTS
         RUST_VARIANTS --> RUST_MATCH
@@ -449,23 +449,23 @@ graph TD
 
 ***
 
-## Exhaustive Pattern Matching: Compiler Guarantees vs Runtime Errors
+## 철저한 패턴 매칭: 컴파일러 보장 vs 런타임 에러 (Exhaustive Pattern Matching)
 
-### C# Switch Expressions - Still Incomplete
+### C# Switch 표현식 - 여전히 불완전함
 ```csharp
-// C# switch expressions look exhaustive but aren't guaranteed
+// C# switch 표현식은 철저해 보이지만 보장되지 않음
 public enum HttpStatus { Ok, NotFound, ServerError, Unauthorized }
 
 public string HandleResponse(HttpStatus status) => status switch
 {
-    HttpStatus.Ok => "Success",
-    HttpStatus.NotFound => "Resource not found",
-    HttpStatus.ServerError => "Internal error",
-    // Missing Unauthorized case - compiles fine!
-    // Runtime: System.InvalidOperationException at runtime
+    HttpStatus.Ok => "성공",
+    HttpStatus.NotFound => "리소스를 찾을 수 없음",
+    HttpStatus.ServerError => "내부 에러",
+    // Unauthorized 케이스 누락 - 정상적으로 컴파일됨!
+    // 런타임: 실행 시 System.InvalidOperationException 발생
 };
 
-// Even with nullable warnings, this compiles:
+// nullable 경고가 켜져 있어도 다음 코드는 컴파일됨:
 public class User 
 {
     public string Name { get; set; }
@@ -474,24 +474,24 @@ public class User
 
 public string ProcessUser(User? user) => user switch
 {
-    { IsActive: true } => $"Active: {user.Name}",
-    { IsActive: false } => $"Inactive: {user.Name}",
-    // Missing null case - warning only, not error
-    // Runtime: NullReferenceException possible
+    { IsActive: true } => $"활성: {user.Name}",
+    { IsActive: false } => $"비활성: {user.Name}",
+    // null 케이스 누락 - 경고만 발생하고 에러는 아님
+    // 런타임: NullReferenceException 발생 가능
 };
 
-// Adding enum values breaks existing code silently
+// 열거형 값을 추가하면 기존 코드가 소리 없이 깨짐
 public enum HttpStatus 
 { 
     Ok, 
     NotFound, 
     ServerError, 
     Unauthorized,
-    Forbidden  // Adding this doesn't break compilation of HandleResponse()!
+    Forbidden  // 이걸 추가해도 HandleResponse() 컴파일은 깨지지 않음!
 }
 ```
 
-### Rust Pattern Matching - True Exhaustiveness
+### Rust 패턴 매칭 - 진정한 철저함 (True Exhaustiveness)
 ```rust
 #[derive(Debug)]
 enum HttpStatus {
@@ -503,45 +503,45 @@ enum HttpStatus {
 
 fn handle_response(status: HttpStatus) -> &'static str {
     match status {
-        HttpStatus::Ok => "Success",
-        HttpStatus::NotFound => "Resource not found", 
-        HttpStatus::ServerError => "Internal error",
-        HttpStatus::Unauthorized => "Authentication required",
-        // Compiler ERROR if any case is missing!
-        // This literally will not compile
+        HttpStatus::Ok => "성공",
+        HttpStatus::NotFound => "리소스를 찾을 수 없음", 
+        HttpStatus::ServerError => "내부 에러",
+        HttpStatus::Unauthorized => "인증 필요",
+        // 하나라도 누락되면 컴파일 에러 발생!
+        // 아예 컴파일이 되지 않음
     }
 }
 
-// Adding a new variant breaks compilation everywhere it's used
+// 새로운 변형을 추가하면 해당 열거형을 사용하는 모든 곳의 컴파일이 깨짐
 #[derive(Debug)]
 enum HttpStatus {
     Ok,
     NotFound,
     ServerError, 
     Unauthorized,
-    Forbidden,  // Adding this breaks compilation in handle_response()
+    Forbidden,  // 이걸 추가하면 handle_response()에서 컴파일 에러 발생
 }
-// The compiler forces you to handle ALL cases
+// 컴파일러가 모든 케이스를 처리하도록 강제함
 
-// Option<T> pattern matching is also exhaustive
+// Option<T> 패턴 매칭도 철저함
 fn process_optional_value(value: Option<i32>) -> String {
     match value {
-        Some(n) => format!("Got value: {}", n),
-        None => "No value".to_string(),
-        // Forgetting either case = compilation error
+        Some(n) => format!("값 발견: {}", n),
+        None => "값 없음".to_string(),
+        // 둘 중 하나라도 잊으면 컴파일 에러
     }
 }
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# Pattern Matching Limitations"
-        CS_SWITCH["switch expression"]
-        CS_WARNING["⚠️ Compiler warnings only"]
-        CS_COMPILE["✅ Compiles successfully"]
-        CS_RUNTIME["💥 Runtime exceptions"]
-        CS_DEPLOY["❌ Bugs reach production"]
-        CS_SILENT["😰 Silent failures on enum changes"]
+    subgraph "C# 패턴 매칭의 한계"
+        CS_SWITCH["switch 표현식"]
+        CS_WARNING["⚠️ 컴파일러 경고만 발생"]
+        CS_COMPILE["✅ 컴파일 성공"]
+        CS_RUNTIME["💥 런타임 예외"]
+        CS_DEPLOY["❌ 버그가 운영 환경에 도달"]
+        CS_SILENT["😰 열거형 변경 시 소리 없는 실패"]
         
         CS_SWITCH --> CS_WARNING
         CS_WARNING --> CS_COMPILE
@@ -550,13 +550,13 @@ graph TD
         CS_SWITCH --> CS_SILENT
     end
     
-    subgraph "Rust Exhaustive Matching"
-        RUST_MATCH["match expression"]
-        RUST_ERROR["🛑 Compilation fails"]
-        RUST_FIX["✅ Must handle all cases"]
-        RUST_SAFE["✅ Zero runtime surprises"]
-        RUST_EVOLUTION["🔄 Enum changes break compilation"]
-        RUST_REFACTOR["🛠️ Forced refactoring"]
+    subgraph "Rust 철저한 매칭"
+        RUST_MATCH["match 표현식"]
+        RUST_ERROR["🛑 컴파일 실패"]
+        RUST_FIX["✅ 모든 케이스 처리 필수"]
+        RUST_SAFE["✅ 런타임 예기치 못한 상황 제로"]
+        RUST_EVOLUTION["🔄 열거형 변경 시 컴파일 깨짐"]
+        RUST_REFACTOR["🛠️ 강제 리팩토링"]
         
         RUST_MATCH --> RUST_ERROR
         RUST_ERROR --> RUST_FIX
@@ -574,41 +574,41 @@ graph TD
 
 ***
 
-## True Immutability vs Record Illusions
+## 진정한 불변성 vs 레코드의 환상 (True Immutability vs Record Illusions)
 
-### C# Records - Immutability Theater
+### C# 레코드 - 불변성 흉내 (Immutability Theater)
 ```csharp
-// C# records look immutable but have escape hatches
+// C# 레코드는 불변처럼 보이지만 탈출구가 있음
 public record Person(string Name, int Age, List<string> Hobbies);
 
 var person = new Person("John", 30, new List<string> { "reading" });
 
-// These all "look" like they create new instances:
-var older = person with { Age = 31 };  // New record
-var renamed = person with { Name = "Jonathan" };  // New record
+// 새로운 인스턴스를 생성하는 것처럼 보임:
+var older = person with { Age = 31 };  // 새 레코드
+var renamed = person with { Name = "Jonathan" };  // 새 레코드
 
-// But the reference types are still mutable!
-person.Hobbies.Add("gaming");  // Mutates the original!
-Console.WriteLine(older.Hobbies.Count);  // 2 - older person affected!
-Console.WriteLine(renamed.Hobbies.Count); // 2 - renamed person also affected!
+// 하지만 참조 타입은 여전히 가변적임!
+person.Hobbies.Add("gaming");  // 원본을 수정함!
+Console.WriteLine(older.Hobbies.Count);  // 2 - older 객체도 영향을 받음!
+Console.WriteLine(renamed.Hobbies.Count); // 2 - renamed 객체도 영향을 받음!
 
-// Init-only properties can still be set via reflection
+// Init-only 속성도 리플렉션을 통해 설정 가능
 typeof(Person).GetProperty("Age")?.SetValue(person, 25);
 
-// Collection expressions help but don't solve the fundamental issue
+// 컬렉션 표현식이 도움이 되지만 근본적인 문제는 해결 못 함
 public record BetterPerson(string Name, int Age, IReadOnlyList<string> Hobbies);
 
 var betterPerson = new BetterPerson("Jane", 25, new List<string> { "painting" });
-// Still mutable via casting: 
-((List<string>)betterPerson.Hobbies).Add("hacking the system");
+// 캐스팅을 통해 여전히 수정 가능: 
+((List<string>)betterPerson.Hobbies).Add("시스템 해킹");
 
-// Even "immutable" collections aren't truly immutable
+// 심지어 "불변" 컬렉션도 진정한 불변은 아님
 using System.Collections.Immutable;
 public record SafePerson(string Name, int Age, ImmutableList<string> Hobbies);
-// This is better, but requires discipline and has performance overhead
+// 이 방식이 더 낫지만, 규율이 필요하고 성능 오버헤드가 있음
 ```
 
-### Rust - True Immutability by Default
+### Rust - 기본적으로 진정한 불변성 (True Immutability)
 ```rust
 #[derive(Debug, Clone)]
 struct Person {
@@ -623,57 +623,34 @@ let person = Person {
     hobbies: vec!["reading".to_string()],
 };
 
-// This simply won't compile:
-// person.age = 31;  // ERROR: cannot assign to immutable field
-// person.hobbies.push("gaming".to_string());  // ERROR: cannot borrow as mutable
+// 다음 코드는 컴파일되지 않음:
+// person.age = 31;  // ERROR: 불변 필드에 할당할 수 없음
+// person.hobbies.push("gaming".to_string());  // ERROR: 가변으로 빌릴 수 없음
 
-// To modify, you must explicitly opt-in with 'mut':
+// 수정하려면 'mut'을 사용하여 명시적으로 허용해야 함:
 let mut older_person = person.clone();
-older_person.age = 31;  // Now it's clear this is mutation
+older_person.age = 31;  // 이제 이것이 수정임을 명확히 알 수 있음
 
-// Or use functional update patterns:
+// 또는 함수형 업데이트 패턴 사용:
 let renamed = Person {
     name: "Jonathan".to_string(),
-    ..person  // Copies other fields (move semantics apply)
+    ..person  // 다른 필드 복사 (이동 의미론 적용)
 };
 
-// The original is guaranteed unchanged (until moved):
-println!("{:?}", person.hobbies);  // Always ["reading"] - immutable
-
-// Structural sharing with efficient immutable data structures
-use std::rc::Rc;
-
-#[derive(Debug, Clone)]
-struct EfficientPerson {
-    name: String,
-    age: u32,
-    hobbies: Rc<Vec<String>>,  // Shared, immutable reference
-}
-
-// Creating new versions shares data efficiently
-let person1 = EfficientPerson {
-    name: "Alice".to_string(),
-    age: 30,
-    hobbies: Rc::new(vec!["reading".to_string(), "cycling".to_string()]),
-};
-
-let person2 = EfficientPerson {
-    name: "Bob".to_string(),
-    age: 25,
-    hobbies: Rc::clone(&person1.hobbies),  // Shared reference, no deep copy
-};
+// 원본은 (이동되지 않는 한) 변경되지 않음이 보장됨:
+println!("{:?}", person.hobbies);  // 항상 ["reading"] - 불변
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# Records - Shallow Immutability"
+    subgraph "C# 레코드 - 얕은 불변성"
         CS_RECORD["record Person(...)"]
-        CS_WITH["with expressions"]
-        CS_SHALLOW["⚠️ Only top-level immutable"]
-        CS_REF_MUT["❌ Reference types still mutable"]
-        CS_REFLECTION["❌ Reflection can bypass"]
-        CS_RUNTIME["❌ Runtime surprises"]
-        CS_DISCIPLINE["😓 Requires team discipline"]
+        CS_WITH["with 표현식"]
+        CS_SHALLOW["⚠️ 최상위 수준만 불변"]
+        CS_REF_MUT["❌ 참조 타입은 여전히 가변적"]
+        CS_REFLECTION["❌ 리플렉션으로 우회 가능"]
+        CS_RUNTIME["❌ 런타임 예기치 못한 상황"]
+        CS_DISCIPLINE["😓 팀원들의 규율에 의존"]
         
         CS_RECORD --> CS_WITH
         CS_WITH --> CS_SHALLOW
@@ -683,14 +660,14 @@ graph TD
         CS_RUNTIME --> CS_DISCIPLINE
     end
     
-    subgraph "Rust - True Immutability"
+    subgraph "Rust - 진정한 불변성"
         RUST_STRUCT["struct Person { ... }"]
-        RUST_DEFAULT["✅ Immutable by default"]
-        RUST_COMPILE["✅ Compile-time enforcement"]
-        RUST_MUT["🔒 Explicit 'mut' required"]
-        RUST_MOVE["🔄 Move semantics"]
-        RUST_ZERO["⚡ Zero runtime overhead"]
-        RUST_SAFE["🛡️ Memory safe"]
+        RUST_DEFAULT["✅ 기본적으로 불변"]
+        RUST_COMPILE["✅ 컴파일 타임 강제"]
+        RUST_MUT["🔒 명시적 'mut' 필요"]
+        RUST_MOVE["🔄 이동 의미론"]
+        RUST_ZERO["⚡ 제로 런타임 오버헤드"]
+        RUST_SAFE["🛡️ 메모리 안전함"]
         
         RUST_STRUCT --> RUST_DEFAULT
         RUST_DEFAULT --> RUST_COMPILE
@@ -710,11 +687,11 @@ graph TD
 
 ***
 
-## Memory Safety: Runtime Checks vs Compile-Time Proofs
+## 메모리 안전성: 런타임 체크 vs 컴파일 타임 증명 (Memory Safety)
 
-### C# - Runtime Safety Net
+### C# - 런타임 안전망 (Runtime Safety Net)
 ```csharp
-// C# relies on runtime checks and GC
+// C#은 런타임 체크와 GC에 의존함
 public class Buffer
 {
     private byte[] data;
@@ -726,39 +703,33 @@ public class Buffer
     
     public void ProcessData(int index)
     {
-        // Runtime bounds checking
+        // 런타임 범위 체크
         if (index >= data.Length)
             throw new IndexOutOfRangeException();
             
-        data[index] = 42;  // Safe, but checked at runtime
+        data[index] = 42;  // 안전하지만 런타임에 체크됨
     }
     
-    // Memory leaks still possible with events/static references
+    // 이벤트나 정적 참조로 인해 메모리 누수가 발생할 수 있음
     public static event Action<string> GlobalEvent;
     
     public void Subscribe()
     {
-        GlobalEvent += HandleEvent;  // Can create memory leaks
-        // Forgot to unsubscribe - object won't be collected
+        GlobalEvent += HandleEvent;  // 메모리 누수 유발 가능
+        // Unsubscribe를 잊으면 객체가 수집되지 않음
     }
     
     private void HandleEvent(string message) { /* ... */ }
     
-    // Null reference exceptions are still possible
+    // 널 참조 예외가 여전히 발생할 수 있음
     public void ProcessUser(User user)
     {
-        Console.WriteLine(user.Name.ToUpper());  // NullReferenceException if user.Name is null
-    }
-    
-    // Array access can fail at runtime
-    public int GetValue(int[] array, int index)
-    {
-        return array[index];  // IndexOutOfRangeException possible
+        Console.WriteLine(user.Name.ToUpper());  // user.Name이 null이면 NullReferenceException
     }
 }
 ```
 
-### Rust - Compile-Time Guarantees
+### Rust - 컴파일 타임 보장 (Compile-Time Guarantees)
 ```rust
 struct Buffer {
     data: Vec<u8>,
@@ -772,72 +743,54 @@ impl Buffer {
     }
     
     fn process_data(&mut self, index: usize) {
-        // Bounds checking can be optimized away by compiler when proven safe
+        // 안전함이 증명되면 컴파일러가 범위 체크를 최적화하여 제거할 수 있음
         if let Some(item) = self.data.get_mut(index) {
-            *item = 42;  // Safe access, proven at compile time
+            *item = 42;  // 컴파일 타임에 증명된 안전한 접근
         }
-        // Or use indexing with explicit bounds check:
-        // self.data[index] = 42;  // Panics in debug, but memory-safe
     }
     
-    // Memory leaks impossible - ownership system prevents them
+    // 소유권 시스템이 메모리 누수를 예방함
     fn process_with_closure<F>(&mut self, processor: F) 
     where F: FnOnce(&mut Vec<u8>)
     {
         processor(&mut self.data);
-        // When processor goes out of scope, it's automatically cleaned up
-        // No way to create dangling references or memory leaks
+        // 클로저가 범위를 벗어나면 자동으로 정리됨
+        // 댕글링 참조(dangling reference)나 메모리 누수를 만들 방법이 없음
     }
     
-    // Null pointer dereferences impossible - no null pointers!
+    // 널 포인터 역참조가 불가능함 - 널 포인터 자체가 없기 때문!
     fn process_user(&self, user: &User) {
-        println!("{}", user.name.to_uppercase());  // user.name cannot be null
-    }
-    
-    // Array access is bounds-checked or explicitly unsafe
-    fn get_value(array: &[i32], index: usize) -> Option<i32> {
-        array.get(index).copied()  // Returns None if out of bounds
-    }
-    
-    // Or explicitly unsafe if you know what you're doing:
-    /// # Safety
-    /// `index` must be less than `array.len()`.
-    unsafe fn get_value_unchecked(array: &[i32], index: usize) -> i32 {
-        *array.get_unchecked(index)  // Fast but must prove bounds manually
+        println!("{}", user.name.to_uppercase());  // user.name은 null일 수 없음
     }
 }
 
-struct User {
-    name: String,  // String cannot be null in Rust
-}
-
-// Ownership prevents use-after-free
+// 소유권은 use-after-free를 방지함
 fn ownership_example() {
     let data = vec![1, 2, 3, 4, 5];
-    let reference = &data[0];  // Borrow data
+    let reference = &data[0];  // data 빌림
     
-    // drop(data);  // ERROR: cannot drop while borrowed
-    println!("{}", reference);  // This is guaranteed safe
+    // drop(data);  // ERROR: 빌려준 상태에서는 drop할 수 없음
+    println!("{}", reference);  // 이 코드는 안전함이 보장됨
 }
 
-// Borrowing prevents data races
+// 빌림(Borrowing)은 데이터 경합을 방지함
 fn borrowing_example(data: &mut Vec<i32>) {
-    let first = &data[0];  // Immutable borrow
-    // data.push(6);  // ERROR: cannot mutably borrow while immutably borrowed
-    println!("{}", first);  // Guaranteed no data race
+    let first = &data[0];  // 불변 빌림
+    // data.push(6);  // ERROR: 불변으로 빌려준 상태에서 가변으로 빌릴 수 없음
+    println!("{}", first);  // 데이터 경합 없음이 보장됨
 }
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# Runtime Safety"
-        CS_RUNTIME["Runtime Checks"]
-        CS_GC["Garbage Collector"]
-        CS_EXCEPTIONS["Exception Handling"]
-        CS_BOUNDS["Runtime bounds checking"]
-        CS_NULL["Null reference exceptions"]
-        CS_LEAKS["Memory leaks possible"]
-        CS_OVERHEAD["Performance overhead"]
+    subgraph "C# 런타임 안전성"
+        CS_RUNTIME["런타임 체크"]
+        CS_GC["가비지 컬렉터"]
+        CS_EXCEPTIONS["예외 처리"]
+        CS_BOUNDS["런타임 범위 체크"]
+        CS_NULL["널 참조 예외"]
+        CS_LEAKS["메모리 누수 가능성"]
+        CS_OVERHEAD["성능 오버헤드"]
         
         CS_RUNTIME --> CS_BOUNDS
         CS_RUNTIME --> CS_NULL
@@ -845,14 +798,14 @@ graph TD
         CS_EXCEPTIONS --> CS_OVERHEAD
     end
     
-    subgraph "Rust Compile-Time Safety"
-        RUST_OWNERSHIP["Ownership System"]
-        RUST_BORROWING["Borrow Checker"]
-        RUST_TYPES["Type System"]
-        RUST_ZERO_COST["Zero-cost abstractions"]
-        RUST_NO_NULL["No null pointers"]
-        RUST_NO_LEAKS["No memory leaks"]
-        RUST_FAST["Optimal performance"]
+    subgraph "Rust 컴파일 타임 안전성"
+        RUST_OWNERSHIP["소유권 시스템"]
+        RUST_BORROWING["빌림 검사기"]
+        RUST_TYPES["타입 시스템"]
+        RUST_ZERO_COST["제로 비용 추상화"]
+        RUST_NO_NULL["널 포인터 없음"]
+        RUST_NO_LEAKS["메모리 누수 없음"]
+        RUST_FAST["최적의 성능"]
         
         RUST_OWNERSHIP --> RUST_NO_LEAKS
         RUST_BORROWING --> RUST_NO_NULL
@@ -870,9 +823,11 @@ graph TD
 
 ***
 
-## Inheritance vs Composition
+## 상속 vs 구성 (Inheritance vs Composition)
+
+### C# - 클래스 기반 상속
 ```csharp
-// C# - Class-based inheritance
+// C# - 클래스 기반 상속
 public abstract class Animal
 {
     public string Name { get; protected set; }
@@ -880,7 +835,7 @@ public abstract class Animal
     
     public virtual void Sleep()
     {
-        Console.WriteLine($"{Name} is sleeping");
+        Console.WriteLine($"{Name}가 잠을 잡니다");
     }
 }
 
@@ -890,47 +845,21 @@ public class Dog : Animal
     
     public override void MakeSound()
     {
-        Console.WriteLine("Woof!");
-    }
-    
-    public void Fetch()
-    {
-        Console.WriteLine($"{Name} is fetching");
-    }
-}
-
-// Interface-based contracts
-public interface IFlyable
-{
-    void Fly();
-}
-
-public class Bird : Animal, IFlyable
-{
-    public Bird(string name) { Name = name; }
-    
-    public override void MakeSound()
-    {
-        Console.WriteLine("Tweet!");
-    }
-    
-    public void Fly()
-    {
-        Console.WriteLine($"{Name} is flying");
+        Console.WriteLine("멍멍!");
     }
 }
 ```
 
-### Rust Composition Model
+### Rust 구성 모델 (Composition Model)
 ```rust
-// Rust - Composition over inheritance with traits
+// Rust - 트레이트를 이용한 상속보다 구성 우선
 pub trait Animal {
     fn name(&self) -> &str;
     fn make_sound(&self);
     
-    // Default implementation (like C# virtual methods)
+    // 기본 구현 (C# 가상 메서드와 유사)
     fn sleep(&self) {
-        println!("{} is sleeping", self.name());
+        println!("{}가 잠을 잡니다", self.name());
     }
 }
 
@@ -938,7 +867,7 @@ pub trait Flyable {
     fn fly(&self);
 }
 
-// Separate data from behavior
+// 데이터와 동작을 분리
 #[derive(Debug)]
 pub struct Dog {
     name: String,
@@ -950,24 +879,20 @@ pub struct Bird {
     wingspan: f64,
 }
 
-// Implement behaviors for types
+// 타입에 대한 동작 구현
 impl Animal for Dog {
     fn name(&self) -> &str {
         &self.name
     }
     
     fn make_sound(&self) {
-        println!("Woof!");
+        println!("멍멍!");
     }
 }
 
 impl Dog {
     pub fn new(name: String) -> Self {
         Dog { name }
-    }
-    
-    pub fn fetch(&self) {
-        println!("{} is fetching", self.name);
     }
 }
 
@@ -977,17 +902,17 @@ impl Animal for Bird {
     }
     
     fn make_sound(&self) {
-        println!("Tweet!");
+        println!("짹짹!");
     }
 }
 
 impl Flyable for Bird {
     fn fly(&self) {
-        println!("{} is flying with {:.1}m wingspan", self.name, self.wingspan);
+        println!("{}가 {:.1}m의 날개로 날아갑니다", self.name, self.wingspan);
     }
 }
 
-// Multiple trait bounds (like multiple interfaces)
+// 다중 트레이트 바운드 (다중 인터페이스와 유사)
 fn make_flying_animal_sound<T>(animal: &T) 
 where 
     T: Animal + Flyable,
@@ -999,12 +924,12 @@ where
 
 ```mermaid
 graph TD
-    subgraph "C# Inheritance Hierarchy"
+    subgraph "C# 상속 계층 구조"
         CS_ANIMAL["Animal (abstract class)"]
         CS_DOG["Dog : Animal"]
         CS_BIRD["Bird : Animal, IFlyable"]
-        CS_VTABLE["Virtual method dispatch<br/>Runtime cost"]
-        CS_COUPLING["[ERROR] Tight coupling<br/>[ERROR] Diamond problem<br/>[ERROR] Deep hierarchies"]
+        CS_VTABLE["가상 메서드 디스패치<br/>런타임 비용"]
+        CS_COUPLING["[ERROR] 강한 결합<br/>[ERROR] 다이아몬드 문제<br/>[ERROR] 깊은 계층 구조"]
         
         CS_ANIMAL --> CS_DOG
         CS_ANIMAL --> CS_BIRD
@@ -1013,7 +938,7 @@ graph TD
         CS_ANIMAL --> CS_COUPLING
     end
     
-    subgraph "Rust Composition Model"
+    subgraph "Rust 구성 모델"
         RUST_ANIMAL["trait Animal"]
         RUST_FLYABLE["trait Flyable"]
         RUST_DOG["struct Dog"]
@@ -1021,8 +946,8 @@ graph TD
         RUST_IMPL1["impl Animal for Dog"]
         RUST_IMPL2["impl Animal for Bird"]
         RUST_IMPL3["impl Flyable for Bird"]
-        RUST_STATIC["Static dispatch<br/>Zero cost"]
-        RUST_FLEXIBLE["[OK] Flexible composition<br/>[OK] No hierarchy limits<br/>[OK] Mix and match traits"]
+        RUST_STATIC["정적 디스패치<br/>제로 비용"]
+        RUST_FLEXIBLE["[OK] 유연한 구성<br/>[OK] 계층 제한 없음<br/>[OK] 트레이트 믹스 앤 매치"]
         
         RUST_DOG --> RUST_IMPL1
         RUST_BIRD --> RUST_IMPL2
@@ -1045,77 +970,38 @@ graph TD
 
 ***
 
-## Exceptions vs Result<T, E>
+## 예외 vs Result<T, E> (Exceptions vs Result)
 
-### C# Exception-Based Error Handling
+### C# 예외 기반 에러 처리
 ```csharp
-// C# - Exception-based error handling
+// C# - 예외 기반 에러 처리
 public class UserService
 {
     public User GetUser(int userId)
     {
         if (userId <= 0)
         {
-            throw new ArgumentException("User ID must be positive");
+            throw new ArgumentException("사용자 ID는 양수여야 합니다");
         }
         
         var user = database.FindUser(userId);
         if (user == null)
         {
-            throw new UserNotFoundException($"User {userId} not found");
+            throw new UserNotFoundException($"사용자 {userId}를 찾을 수 없음");
         }
         
         return user;
     }
-    
-    public async Task<string> GetUserEmailAsync(int userId)
-    {
-        try
-        {
-            var user = GetUser(userId);
-            return user.Email ?? throw new InvalidOperationException("User has no email");
-        }
-        catch (UserNotFoundException ex)
-        {
-            logger.Warning("User not found: {UserId}", userId);
-            return "noreply@company.com";
-        }
-        catch (Exception ex)
-        {
-            logger.Error(ex, "Unexpected error getting user email");
-            throw; // Re-throw
-        }
-    }
 }
 ```
 
-### Rust Result-Based Error Handling
+### Rust Result 기반 에러 처리
 ```rust
-use std::fmt;
-
 #[derive(Debug)]
 pub enum UserError {
     InvalidId(i32),
     NotFound(i32),
     NoEmail,
-    DatabaseError(String),
-}
-
-impl fmt::Display for UserError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            UserError::InvalidId(id) => write!(f, "Invalid user ID: {}", id),
-            UserError::NotFound(id) => write!(f, "User {} not found", id),
-            UserError::NoEmail => write!(f, "User has no email address"),
-            UserError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for UserError {}
-
-pub struct UserService {
-    // database connection, etc.
 }
 
 impl UserService {
@@ -1124,43 +1010,28 @@ impl UserService {
             return Err(UserError::InvalidId(user_id));
         }
         
-        // Simulate database lookup
         self.database_find_user(user_id)
             .ok_or(UserError::NotFound(user_id))
     }
     
     pub fn get_user_email(&self, user_id: i32) -> Result<String, UserError> {
-        let user = self.get_user(user_id)?; // ? operator propagates errors
+        let user = self.get_user(user_id)?; // ? 연산자가 에러를 전파함
         
         user.email
             .ok_or(UserError::NoEmail)
-    }
-    
-    pub fn get_user_email_or_default(&self, user_id: i32) -> String {
-        match self.get_user_email(user_id) {
-            Ok(email) => email,
-            Err(UserError::NotFound(_)) => {
-                log::warn!("User not found: {}", user_id);
-                "noreply@company.com".to_string()
-            }
-            Err(err) => {
-                log::error!("Error getting user email: {}", err);
-                "error@company.com".to_string()
-            }
-        }
     }
 }
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# Exception Model"
-        CS_CALL["Method Call"]
-        CS_SUCCESS["Success Path"]
-        CS_EXCEPTION["throw Exception"]
-        CS_STACK["Stack unwinding<br/>(Runtime cost)"]
-        CS_CATCH["try/catch block"]
-        CS_HIDDEN["[ERROR] Hidden control flow<br/>[ERROR] Performance cost<br/>[ERROR] Easy to ignore"]
+    subgraph "C# 예외 모델"
+        CS_CALL["메서드 호출"]
+        CS_SUCCESS["성공 경로"]
+        CS_EXCEPTION["throw 예외"]
+        CS_STACK["스택 되감기(Stack unwinding)<br/>(런타임 비용)"]
+        CS_CATCH["try/catch 블록"]
+        CS_HIDDEN["[ERROR] 숨겨진 제어 흐름<br/>[ERROR] 성능 비용<br/>[ERROR] 무시하기 쉬움"]
         
         CS_CALL --> CS_SUCCESS
         CS_CALL --> CS_EXCEPTION
@@ -1169,13 +1040,13 @@ graph TD
         CS_EXCEPTION --> CS_HIDDEN
     end
     
-    subgraph "Rust Result Model"
-        RUST_CALL["Function Call"]
-        RUST_OK["Ok(value)"]
-        RUST_ERR["Err(error)"]
-        RUST_MATCH["match result"]
-        RUST_QUESTION["? operator<br/>(early return)"]
-        RUST_EXPLICIT["[OK] Explicit error handling<br/>[OK] Zero runtime cost<br/>[OK] Cannot ignore errors"]
+    subgraph "Rust Result 모델"
+        RUST_CALL["함수 호출"]
+        RUST_OK["Ok(값)"]
+        RUST_ERR["Err(에러)"]
+        RUST_MATCH["match 결과"]
+        RUST_QUESTION["? 연산자<br/>(조기 반환)"]
+        RUST_EXPLICIT["[OK] 명시적 에러 처리<br/>[OK] 제로 런타임 비용<br/>[OK] 에러를 무시할 수 없음"]
         
         RUST_CALL --> RUST_OK
         RUST_CALL --> RUST_ERR
@@ -1194,110 +1065,48 @@ graph TD
 
 ***
 
-## LINQ vs Rust Iterators
+## LINQ vs Rust 반복자 (LINQ vs Rust Iterators)
 
 ### C# LINQ (Language Integrated Query)
 ```csharp
-// C# LINQ - Declarative data processing
+// C# LINQ - 선언적 데이터 처리
 var numbers = new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
 var result = numbers
-    .Where(n => n % 2 == 0)           // Filter even numbers
-    .Select(n => n * n)               // Square them
-    .Where(n => n > 10)               // Filter > 10
-    .OrderByDescending(n => n)        // Sort descending
-    .Take(3)                          // Take first 3
-    .ToList();                        // Materialize
-
-// LINQ with complex objects
-var users = GetUsers();
-var activeAdults = users
-    .Where(u => u.IsActive && u.Age >= 18)
-    .GroupBy(u => u.Department)
-    .Select(g => new {
-        Department = g.Key,
-        Count = g.Count(),
-        AverageAge = g.Average(u => u.Age)
-    })
-    .OrderBy(x => x.Department)
-    .ToList();
-
-// Async LINQ (with additional libraries)
-var results = await users
-    .ToAsyncEnumerable()
-    .WhereAwait(async u => await IsActiveAsync(u.Id))
-    .SelectAwait(async u => await EnrichUserAsync(u))
-    .ToListAsync();
+    .Where(n => n % 2 == 0)           // 짝수 필터링
+    .Select(n => n * n)               // 제곱
+    .Where(n => n > 10)               // 10보다 큰 것 필터링
+    .OrderByDescending(n => n)        // 내림차순 정렬
+    .Take(3)                          // 상위 3개 선택
+    .ToList();                        // 실체화(Materialize)
 ```
 
-### Rust Iterators
+### Rust 반복자 (Rust Iterators)
 ```rust
-// Rust iterators - Lazy, zero-cost abstractions
+// Rust 반복자 - 지연 평가, 제로 비용 추상화
 let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 let result: Vec<i32> = numbers
     .iter()
-    .filter(|&&n| n % 2 == 0)        // Filter even numbers
-    .map(|&n| n * n)                 // Square them
-    .filter(|&n| n > 10)             // Filter > 10
-    .collect::<Vec<_>>()             // Collect to Vec
+    .filter(|&&n| n % 2 == 0)        // 짝수 필터링
+    .map(|&n| n * n)                 // 제곱
+    .filter(|&n| n > 10)             // 10보다 큰 것 필터링
+    .collect::<Vec<_>>()             // Vec으로 수집
     .into_iter()
-    .rev()                           // Reverse (descending sort)
-    .take(3)                         // Take first 3
-    .collect();                      // Materialize
-
-// Complex iterator chains
-use std::collections::HashMap;
-
-#[derive(Debug, Clone)]
-struct User {
-    name: String,
-    age: u32,
-    department: String,
-    is_active: bool,
-}
-
-fn process_users(users: Vec<User>) -> HashMap<String, (usize, f64)> {
-    users
-        .into_iter()
-        .filter(|u| u.is_active && u.age >= 18)
-        .fold(HashMap::new(), |mut acc, user| {
-            let entry = acc.entry(user.department.clone()).or_insert((0, 0.0));
-            entry.0 += 1;  // count
-            entry.1 += user.age as f64;  // sum of ages
-            acc
-        })
-        .into_iter()
-        .map(|(dept, (count, sum))| (dept, (count, sum / count as f64)))  // average
-        .collect()
-}
-
-// Parallel processing with rayon
-use rayon::prelude::*;
-
-fn parallel_processing(numbers: Vec<i32>) -> Vec<i32> {
-    numbers
-        .par_iter()                  // Parallel iterator
-        .filter(|&&n| n % 2 == 0)
-        .map(|&n| expensive_computation(n))
-        .collect()
-}
-
-fn expensive_computation(n: i32) -> i32 {
-    // Simulate heavy computation
-    (0..1000).fold(n, |acc, _| acc + 1)
-}
+    .rev()                           // 반전 (내림차순 정렬 대용)
+    .take(3)                         // 상위 3개 선택
+    .collect();                      // 실체화
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# LINQ Characteristics"
-        CS_LINQ["LINQ Expression"]
-        CS_EAGER["Often eager evaluation<br/>(ToList(), ToArray())"]
-        CS_REFLECTION["[ERROR] Some runtime reflection<br/>Expression trees"]
-        CS_ALLOCATIONS["[ERROR] Intermediate collections<br/>Garbage collection pressure"]
-        CS_ASYNC["[OK] Async support<br/>(with additional libraries)"]
-        CS_SQL["[OK] LINQ to SQL/EF integration"]
+    subgraph "C# LINQ의 특징"
+        CS_LINQ["LINQ 표현식"]
+        CS_EAGER["종종 즉시 평가됨<br/>(ToList(), ToArray())"]
+        CS_REFLECTION["[ERROR] 일부 런타임 리플렉션<br/>표현식 트리"]
+        CS_ALLOCATIONS["[ERROR] 중간 컬렉션 생성<br/>가비지 컬렉션 압박"]
+        CS_ASYNC["[OK] 비동기 지원<br/>(추가 라이브러리 필요)"]
+        CS_SQL["[OK] LINQ to SQL/EF 통합"]
         
         CS_LINQ --> CS_EAGER
         CS_LINQ --> CS_REFLECTION
@@ -1306,13 +1115,13 @@ graph TD
         CS_LINQ --> CS_SQL
     end
     
-    subgraph "Rust Iterator Characteristics"
-        RUST_ITER["Iterator Chain"]
-        RUST_LAZY["[OK] Lazy evaluation<br/>No work until .collect()"]
-        RUST_ZERO["[OK] Zero-cost abstractions<br/>Compiles to optimal loops"]
-        RUST_NO_ALLOC["[OK] No intermediate allocations<br/>Stack-based processing"]
-        RUST_PARALLEL["[OK] Easy parallelization<br/>(rayon crate)"]
-        RUST_FUNCTIONAL["[OK] Functional programming<br/>Immutable by default"]
+    subgraph "Rust 반복자의 특징"
+        RUST_ITER["반복자 체인"]
+        RUST_LAZY["[OK] 지연 평가<br/>.collect() 전까지 작업 안 함"]
+        RUST_ZERO["[OK] 제로 비용 추상화<br/>최적화된 루프로 컴파일됨"]
+        RUST_NO_ALLOC["[OK] 중간 할당 없음<br/>스택 기반 처리"]
+        RUST_PARALLEL["[OK] 쉬운 병렬화<br/>(rayon 크레이트)"]
+        RUST_FUNCTIONAL["[OK] 함수형 프로그래밍<br/>기본적으로 불변"]
         
         RUST_ITER --> RUST_LAZY
         RUST_ITER --> RUST_ZERO
@@ -1321,9 +1130,9 @@ graph TD
         RUST_ITER --> RUST_FUNCTIONAL
     end
     
-    subgraph "Performance Comparison"
-        CS_PERF["C# LINQ Performance<br/>[ERROR] Allocation overhead<br/>[ERROR] Virtual dispatch<br/>[OK] Good enough for most cases"]
-        RUST_PERF["Rust Iterator Performance<br/>[OK] Hand-optimized speed<br/>[OK] No allocations<br/>[OK] Compile-time optimization"]
+    subgraph "성능 비교"
+        CS_PERF["C# LINQ 성능<br/>[ERROR] 할당 오버헤드<br/>[ERROR] 가상 디스패치<br/>[OK] 대부분의 경우 충분함"]
+        RUST_PERF["Rust 반복자 성능<br/>[OK] 수동 최적화 수준의 속도<br/>[OK] 할당 없음<br/>[OK] 컴파일 타임 최적화"]
     end
     
     style CS_REFLECTION fill:#ffcdd2
@@ -1337,59 +1146,23 @@ graph TD
 
 ***
 
-## Generic Constraints: where vs trait bounds
+## 제네릭 제약 조건: where vs 트레이트 바운드 (Generic Constraints)
 
-### C# Generic Constraints
+### C# 제네릭 제약 조건
 ```csharp
-// C# Generic constraints with where clause
+// C# where 절을 이용한 제네릭 제약 조건
 public class Repository<T> where T : class, IEntity, new()
 {
     public T Create()
     {
-        return new T();  // new() constraint allows parameterless constructor
+        return new T();  // new() 제약 조건으로 매개변수 없는 생성자 허용
     }
-    
-    public void Save(T entity)
-    {
-        if (entity.Id == 0)  // IEntity constraint provides Id property
-        {
-            entity.Id = GenerateId();
-        }
-        // Save to database
-    }
-}
-
-// Multiple type parameters with constraints
-public class Converter<TInput, TOutput> 
-    where TInput : IConvertible
-    where TOutput : class, new()
-{
-    public TOutput Convert(TInput input)
-    {
-        var output = new TOutput();
-        // Conversion logic using IConvertible
-        return output;
-    }
-}
-
-// Variance in generics
-public interface IRepository<out T> where T : IEntity
-{
-    IEnumerable<T> GetAll();  // Covariant - can return more derived types
-}
-
-public interface IWriter<in T> where T : IEntity
-{
-    void Write(T entity);  // Contravariant - can accept more base types
 }
 ```
 
-### Rust Generic Constraints with Trait Bounds
+### Rust 트레이트 바운드를 이용한 제약 조건
 ```rust
-use std::fmt::{Debug, Display};
-use std::clone::Clone;
-
-// Basic trait bounds
+// Rust 트레이트 바운드
 pub struct Repository<T> 
 where 
     T: Clone + Debug + Default,
@@ -1401,75 +1174,20 @@ impl<T> Repository<T>
 where 
     T: Clone + Debug + Default,
 {
-    pub fn new() -> Self {
-        Repository { items: Vec::new() }
-    }
-    
     pub fn create(&self) -> T {
-        T::default()  // Default trait provides default value
-    }
-    
-    pub fn add(&mut self, item: T) {
-        println!("Adding item: {:?}", item);  // Debug trait for printing
-        self.items.push(item);
-    }
-    
-    pub fn get_all(&self) -> Vec<T> {
-        self.items.clone()  // Clone trait for duplication
-    }
-}
-
-// Multiple trait bounds with different syntaxes
-pub fn process_data<T, U>(input: T) -> U 
-where 
-    T: Display + Clone,
-    U: From<T> + Debug,
-{
-    println!("Processing: {}", input);  // Display trait
-    let cloned = input.clone();         // Clone trait
-    let output = U::from(cloned);       // From trait for conversion
-    println!("Result: {:?}", output);   // Debug trait
-    output
-}
-
-// Associated types (similar to C# generic constraints)
-pub trait Iterator {
-    type Item;  // Associated type instead of generic parameter
-    
-    fn next(&mut self) -> Option<Self::Item>;
-}
-
-pub trait Collect<T> {
-    fn collect<I: Iterator<Item = T>>(iter: I) -> Self;
-}
-
-// Higher-ranked trait bounds (advanced)
-fn apply_to_all<F>(items: &[String], f: F) -> Vec<String>
-where 
-    F: for<'a> Fn(&'a str) -> String,  // Function works with any lifetime
-{
-    items.iter().map(|s| f(s)).collect()
-}
-
-// Conditional trait implementations
-impl<T> PartialEq for Repository<T> 
-where 
-    T: PartialEq + Clone + Debug + Default,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.items == other.items
+        T::default()  // Default 트레이트가 기본값 제공
     }
 }
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# Generic Constraints"
+    subgraph "C# 제네릭 제약 조건"
         CS_WHERE["where T : class, IInterface, new()"]
-        CS_RUNTIME["[ERROR] Some runtime type checking<br/>Virtual method dispatch"]
-        CS_VARIANCE["[OK] Covariance/Contravariance<br/>in/out keywords"]
-        CS_REFLECTION["[ERROR] Runtime reflection possible<br/>typeof(T), is, as operators"]
-        CS_BOXING["[ERROR] Value type boxing<br/>for interface constraints"]
+        CS_RUNTIME["[ERROR] 일부 런타임 타입 체크<br/>가상 메서드 디스패치"]
+        CS_VARIANCE["[OK] 공변성/반공변성<br/>in/out 키워드"]
+        CS_REFLECTION["[ERROR] 런타임 리플렉션 가능<br/>typeof(T), is, as 연산자"]
+        CS_BOXING["[ERROR] 인터페이스 제약 조건에 대한<br/>값 타입 박싱"]
         
         CS_WHERE --> CS_RUNTIME
         CS_WHERE --> CS_VARIANCE
@@ -1477,12 +1195,12 @@ graph TD
         CS_WHERE --> CS_BOXING
     end
     
-    subgraph "Rust Trait Bounds"
+    subgraph "Rust 트레이트 바운드"
         RUST_WHERE["where T: Trait + Clone + Debug"]
-        RUST_COMPILE["[OK] Compile-time resolution<br/>Monomorphization"]
-        RUST_ZERO["[OK] Zero-cost abstractions<br/>No runtime overhead"]
-        RUST_ASSOCIATED["[OK] Associated types<br/>More flexible than generics"]
-        RUST_HKT["[OK] Higher-ranked trait bounds<br/>Advanced type relationships"]
+        RUST_COMPILE["[OK] 컴파일 타임 결정<br/>단형성화(Monomorphization)"]
+        RUST_ZERO["[OK] 제로 비용 추상화<br/>런타임 오버헤드 없음"]
+        RUST_ASSOCIATED["[OK] 연관 타입<br/>제네릭보다 유연함"]
+        RUST_HKT["[OK] 고차 트레이트 바운드<br/>고급 타입 관계 정의"]
         
         RUST_WHERE --> RUST_COMPILE
         RUST_WHERE --> RUST_ZERO
@@ -1490,682 +1208,93 @@ graph TD
         RUST_WHERE --> RUST_HKT
     end
     
-    subgraph "Flexibility Comparison"
-        CS_FLEX["C# Flexibility<br/>[OK] Variance<br/>[OK] Runtime type info<br/>[ERROR] Performance cost"]
-        RUST_FLEX["Rust Flexibility<br/>[OK] Zero cost<br/>[OK] Compile-time safety<br/>[ERROR] No variance (yet)"]
-    end
-    
     style CS_RUNTIME fill:#fff3e0
     style CS_BOXING fill:#ffcdd2
     style RUST_COMPILE fill:#c8e6c9
     style RUST_ZERO fill:#c8e6c9
-    style CS_FLEX fill:#e3f2fd
-    style RUST_FLEX fill:#c8e6c9
 ```
 
 ***
 
-## Common C# Patterns in Rust
+## 스레드 안전성: 관례 vs 타입 시스템 보장 (Thread Safety)
 
-### Repository Pattern
+### C# - 관례에 따른 스레드 안전성
 ```csharp
-// C# Repository Pattern
-public interface IRepository<T> where T : IEntity
-{
-    Task<T> GetByIdAsync(int id);
-    Task<IEnumerable<T>> GetAllAsync();
-    Task<T> AddAsync(T entity);
-    Task UpdateAsync(T entity);
-    Task DeleteAsync(int id);
-}
-
-public class UserRepository : IRepository<User>
-{
-    private readonly DbContext _context;
-    
-    public UserRepository(DbContext context)
-    {
-        _context = context;
-    }
-    
-    public async Task<User> GetByIdAsync(int id)
-    {
-        return await _context.Users.FindAsync(id);
-    }
-    
-    // ... other implementations
-}
-```
-
-```rust
-// Rust Repository Pattern with traits and generics
-use async_trait::async_trait;
-use std::fmt::Debug;
-
-#[async_trait]
-pub trait Repository<T, E> 
-where 
-    T: Clone + Debug + Send + Sync,
-    E: std::error::Error + Send + Sync,
-{
-    async fn get_by_id(&self, id: u64) -> Result<Option<T>, E>;
-    async fn get_all(&self) -> Result<Vec<T>, E>;
-    async fn add(&self, entity: T) -> Result<T, E>;
-    async fn update(&self, entity: T) -> Result<T, E>;
-    async fn delete(&self, id: u64) -> Result<(), E>;
-}
-
-#[derive(Debug, Clone)]
-pub struct User {
-    pub id: u64,
-    pub name: String,
-    pub email: String,
-}
-
-#[derive(Debug)]
-pub enum RepositoryError {
-    NotFound(u64),
-    DatabaseError(String),
-    ValidationError(String),
-}
-
-impl std::fmt::Display for RepositoryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RepositoryError::NotFound(id) => write!(f, "Entity with id {} not found", id),
-            RepositoryError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
-            RepositoryError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for RepositoryError {}
-
-pub struct UserRepository {
-    // database connection pool, etc.
-}
-
-#[async_trait]
-impl Repository<User, RepositoryError> for UserRepository {
-    async fn get_by_id(&self, id: u64) -> Result<Option<User>, RepositoryError> {
-        // Simulate database lookup
-        if id == 0 {
-            return Ok(None);
-        }
-        
-        Ok(Some(User {
-            id,
-            name: format!("User {}", id),
-            email: format!("user{}@example.com", id),
-        }))
-    }
-    
-    async fn get_all(&self) -> Result<Vec<User>, RepositoryError> {
-        // Implementation here
-        Ok(vec![])
-    }
-    
-    async fn add(&self, entity: User) -> Result<User, RepositoryError> {
-        // Validation and database insertion
-        if entity.name.is_empty() {
-            return Err(RepositoryError::ValidationError("Name cannot be empty".to_string()));
-        }
-        Ok(entity)
-    }
-    
-    async fn update(&self, entity: User) -> Result<User, RepositoryError> {
-        // Implementation here
-        Ok(entity)
-    }
-    
-    async fn delete(&self, id: u64) -> Result<(), RepositoryError> {
-        // Implementation here
-        Ok(())
-    }
-}
-```
-
-### Builder Pattern
-```csharp
-// C# Builder Pattern (fluent interface)
-public class HttpClientBuilder
-{
-    private TimeSpan? _timeout;
-    private string _baseAddress;
-    private Dictionary<string, string> _headers = new();
-    
-    public HttpClientBuilder WithTimeout(TimeSpan timeout)
-    {
-        _timeout = timeout;
-        return this;
-    }
-    
-    public HttpClientBuilder WithBaseAddress(string baseAddress)
-    {
-        _baseAddress = baseAddress;
-        return this;
-    }
-    
-    public HttpClientBuilder WithHeader(string name, string value)
-    {
-        _headers[name] = value;
-        return this;
-    }
-    
-    public HttpClient Build()
-    {
-        var client = new HttpClient();
-        if (_timeout.HasValue)
-            client.Timeout = _timeout.Value;
-        if (!string.IsNullOrEmpty(_baseAddress))
-            client.BaseAddress = new Uri(_baseAddress);
-        foreach (var header in _headers)
-            client.DefaultRequestHeaders.Add(header.Key, header.Value);
-        return client;
-    }
-}
-
-// Usage
-var client = new HttpClientBuilder()
-    .WithTimeout(TimeSpan.FromSeconds(30))
-    .WithBaseAddress("https://api.example.com")
-    .WithHeader("Accept", "application/json")
-    .Build();
-```
-
-```rust
-// Rust Builder Pattern (consuming builder)
-use std::collections::HashMap;
-use std::time::Duration;
-
-#[derive(Debug)]
-pub struct HttpClient {
-    timeout: Duration,
-    base_address: String,
-    headers: HashMap<String, String>,
-}
-
-pub struct HttpClientBuilder {
-    timeout: Option<Duration>,
-    base_address: Option<String>,
-    headers: HashMap<String, String>,
-}
-
-impl HttpClientBuilder {
-    pub fn new() -> Self {
-        HttpClientBuilder {
-            timeout: None,
-            base_address: None,
-            headers: HashMap::new(),
-        }
-    }
-    
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = Some(timeout);
-        self
-    }
-    
-    pub fn with_base_address<S: Into<String>>(mut self, base_address: S) -> Self {
-        self.base_address = Some(base_address.into());
-        self
-    }
-    
-    pub fn with_header<K: Into<String>, V: Into<String>>(mut self, name: K, value: V) -> Self {
-        self.headers.insert(name.into(), value.into());
-        self
-    }
-    
-    pub fn build(self) -> Result<HttpClient, String> {
-        let base_address = self.base_address.ok_or("Base address is required")?;
-        
-        Ok(HttpClient {
-            timeout: self.timeout.unwrap_or(Duration::from_secs(30)),
-            base_address,
-            headers: self.headers,
-        })
-    }
-}
-
-// Usage
-let client = HttpClientBuilder::new()
-    .with_timeout(Duration::from_secs(30))
-    .with_base_address("https://api.example.com")
-    .with_header("Accept", "application/json")
-    .build()?;
-
-// Alternative: Using Default trait for common cases
-impl Default for HttpClientBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-```
-
-***
-
-## Essential Crates for C# Developers
-
-### Core Functionality Equivalents
-
-```rust
-// Cargo.toml dependencies for C# developers
-[dependencies]
-# Serialization (like Newtonsoft.Json or System.Text.Json)
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-
-# HTTP client (like HttpClient)
-reqwest = { version = "0.11", features = ["json"] }
-
-# Async runtime (like Task.Run, async/await)
-tokio = { version = "1.0", features = ["full"] }
-
-# Error handling (like custom exceptions)
-thiserror = "1.0"
-anyhow = "1.0"
-
-# Logging (like ILogger, Serilog)
-log = "0.4"
-env_logger = "0.10"
-
-# Date/time (like DateTime)
-chrono = { version = "0.4", features = ["serde"] }
-
-# UUID (like System.Guid)
-uuid = { version = "1.0", features = ["v4", "serde"] }
-
-# Collections (like List<T>, Dictionary<K,V>)
-# Built into std, but for advanced collections:
-indexmap = "2.0"  # Ordered HashMap
-
-# Configuration (like IConfiguration)
-config = "0.13"
-
-# Database (like Entity Framework)
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono"] }
-
-# Testing (like xUnit, NUnit)
-# Built into std, but for more features:
-rstest = "0.18"  # Parameterized tests
-
-# Mocking (like Moq)
-mockall = "0.11"
-
-# Parallel processing (like Parallel.ForEach)
-rayon = "1.7"
-```
-
-### Example Usage Patterns
-
-```rust
-use serde::{Deserialize, Serialize};
-use reqwest;
-use tokio;
-use thiserror::Error;
-use chrono::{DateTime, Utc};
-use uuid::Uuid;
-
-// Data models (like C# POCOs with attributes)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct User {
-    pub id: Uuid,
-    pub name: String,
-    pub email: String,
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub created_at: DateTime<Utc>,
-}
-
-// Custom error types (like custom exceptions)
-#[derive(Error, Debug)]
-pub enum ApiError {
-    #[error("HTTP request failed: {0}")]
-    Http(#[from] reqwest::Error),
-    
-    #[error("Serialization failed: {0}")]
-    Serialization(#[from] serde_json::Error),
-    
-    #[error("User not found: {id}")]
-    UserNotFound { id: Uuid },
-    
-    #[error("Validation failed: {message}")]
-    Validation { message: String },
-}
-
-// Service class equivalent
-pub struct UserService {
-    client: reqwest::Client,
-    base_url: String,
-}
-
-impl UserService {
-    pub fn new(base_url: String) -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .expect("Failed to create HTTP client");
-            
-        UserService { client, base_url }
-    }
-    
-    // Async method (like C# async Task<User>)
-    pub async fn get_user(&self, id: Uuid) -> Result<User, ApiError> {
-        let url = format!("{}/users/{}", self.base_url, id);
-        
-        let response = self.client
-            .get(&url)
-            .send()
-            .await?;
-        
-        if response.status() == 404 {
-            return Err(ApiError::UserNotFound { id });
-        }
-        
-        let user = response.json::<User>().await?;
-        Ok(user)
-    }
-    
-    // Create user (like C# async Task<User>)
-    pub async fn create_user(&self, name: String, email: String) -> Result<User, ApiError> {
-        if name.trim().is_empty() {
-            return Err(ApiError::Validation {
-                message: "Name cannot be empty".to_string(),
-            });
-        }
-        
-        let new_user = User {
-            id: Uuid::new_v4(),
-            name,
-            email,
-            created_at: Utc::now(),
-        };
-        
-        let response = self.client
-            .post(&format!("{}/users", self.base_url))
-            .json(&new_user)
-            .send()
-            .await?;
-        
-        let created_user = response.json::<User>().await?;
-        Ok(created_user)
-    }
-}
-
-// Usage example (like C# Main method)
-#[tokio::main]
-async fn main() -> Result<(), ApiError> {
-    // Initialize logging (like configuring ILogger)
-    env_logger::init();
-    
-    let service = UserService::new("https://api.example.com".to_string());
-    
-    // Create user
-    let user = service.create_user(
-        "John Doe".to_string(),
-        "john@example.com".to_string(),
-    ).await?;
-    
-    println!("Created user: {:?}", user);
-    
-    // Get user
-    let retrieved_user = service.get_user(user.id).await?;
-    println!("Retrieved user: {:?}", retrieved_user);
-    
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[tokio::test]  // Like C# [Test] or [Fact]
-    async fn test_user_creation() {
-        let service = UserService::new("http://localhost:8080".to_string());
-        
-        let result = service.create_user(
-            "Test User".to_string(),
-            "test@example.com".to_string(),
-        ).await;
-        
-        assert!(result.is_ok());
-        let user = result.unwrap();
-        assert_eq!(user.name, "Test User");
-        assert_eq!(user.email, "test@example.com");
-    }
-    
-    #[test]
-    fn test_validation() {
-        // Synchronous test
-        let error = ApiError::Validation {
-            message: "Invalid input".to_string(),
-        };
-        
-        assert_eq!(error.to_string(), "Validation failed: Invalid input");
-    }
-}
-```
-
-***
-
-## Thread Safety: Convention vs Type System Guarantees
-
-### C# - Thread Safety by Convention
-```csharp
-// C# collections aren't thread-safe by default
+// C# 컬렉션은 기본적으로 스레드 안전하지 않음
 public class UserService
 {
     private readonly List<string> items = new();
-    private readonly Dictionary<int, User> cache = new();
 
-    // This can cause data races:
+    // 데이터 경합 유발 가능:
     public void AddItem(string item)
     {
-        items.Add(item);  // Not thread-safe!
+        items.Add(item);  // 스레드 안전하지 않음!
     }
 
-    // Must use locks manually:
+    // 수동으로 락을 사용해야 함:
     private readonly object lockObject = new();
 
     public void SafeAddItem(string item)
     {
         lock (lockObject)
         {
-            items.Add(item);  // Safe, but runtime overhead
+            items.Add(item);  // 안전하지만 런타임 오버헤드 발생
         }
-        // Easy to forget the lock elsewhere
-    }
-
-    // ConcurrentCollection helps but limited:
-    private readonly ConcurrentBag<string> safeItems = new();
-    
-    public void ConcurrentAdd(string item)
-    {
-        safeItems.Add(item);  // Thread-safe but limited operations
-    }
-
-    // Complex shared state management
-    private readonly ConcurrentDictionary<int, User> threadSafeCache = new();
-    private volatile bool isShutdown = false;
-    
-    public async Task ProcessUser(int userId)
-    {
-        if (isShutdown) return;  // Race condition possible!
-        
-        var user = await GetUser(userId);
-        threadSafeCache.TryAdd(userId, user);  // Must remember which collections are safe
-    }
-
-    // Thread-local storage requires careful management
-    private static readonly ThreadLocal<Random> threadLocalRandom = 
-        new ThreadLocal<Random>(() => new Random());
-        
-    public int GetRandomNumber()
-    {
-        return threadLocalRandom.Value.Next();  // Safe but manual management
-    }
-}
-
-// Event handling with potential race conditions
-public class EventProcessor
-{
-    public event Action<string> DataReceived;
-    private readonly List<string> eventLog = new();
-    
-    public void OnDataReceived(string data)
-    {
-        // Race condition - event might be null between check and invocation
-        if (DataReceived != null)
-        {
-            DataReceived(data);
-        }
-        
-        // Another race condition - list not thread-safe
-        eventLog.Add($"Processed: {data}");
+        // 다른 곳에서 락을 잊기 쉬움
     }
 }
 ```
 
-### Rust - Thread Safety Guaranteed by Type System
+### Rust - 타입 시스템에 의해 보장되는 스레드 안전성
 ```rust
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::collections::HashMap;
-use tokio::sync::{mpsc, broadcast};
 
-// Rust prevents data races at compile time
+// Rust는 컴파일 타임에 데이터 경합을 방지함
 pub struct UserService {
     items: Arc<Mutex<Vec<String>>>,
     cache: Arc<RwLock<HashMap<i32, User>>>,
 }
 
 impl UserService {
-    pub fn new() -> Self {
-        UserService {
-            items: Arc::new(Mutex::new(Vec::new())),
-            cache: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-    
     pub fn add_item(&self, item: String) {
         let mut items = self.items.lock().unwrap();
         items.push(item);
-        // Lock automatically released when `items` goes out of scope
+        // `items`가 범위를 벗어나면 자동으로 락이 해제됨
     }
     
-    // Multiple readers, single writer - automatically enforced
+    // 다중 읽기, 단일 쓰기 - 자동으로 강제됨
     pub async fn get_user(&self, user_id: i32) -> Option<User> {
         let cache = self.cache.read().unwrap();
         cache.get(&user_id).cloned()
     }
-    
-    pub async fn cache_user(&self, user_id: i32, user: User) {
-        let mut cache = self.cache.write().unwrap();
-        cache.insert(user_id, user);
-    }
-    
-    // Clone the Arc for thread sharing
-    pub fn process_in_background(&self) {
-        let items = Arc::clone(&self.items);
-        
-        thread::spawn(move || {
-            let items = items.lock().unwrap();
-            for item in items.iter() {
-                println!("Processing: {}", item);
-            }
-        });
-    }
 }
 
-// Channel-based communication - no shared state needed
-pub struct MessageProcessor {
-    sender: mpsc::UnboundedSender<String>,
-}
-
-impl MessageProcessor {
-    pub fn new() -> (Self, mpsc::UnboundedReceiver<String>) {
-        let (tx, rx) = mpsc::unbounded_channel();
-        (MessageProcessor { sender: tx }, rx)
-    }
-    
-    pub fn send_message(&self, message: String) -> Result<(), mpsc::error::SendError<String>> {
-        self.sender.send(message)
-    }
-}
-
-// This won't compile - Rust prevents sharing mutable data unsafely:
+// 다음 코드는 컴파일되지 않음 - Rust는 안전하지 않은 가변 데이터 공유를 차단함:
 fn impossible_data_race() {
     let mut items = vec![1, 2, 3];
     
-    // This won't compile - cannot move `items` into multiple closures
+    // items를 여러 클로저로 이동(move)시킬 수 없음
     /*
     thread::spawn(move || {
-        items.push(4);  // ERROR: use of moved value
-    });
-    
-    thread::spawn(move || {
-        items.push(5);  // ERROR: use of moved value  
+        items.push(4);  // ERROR: 이미 이동된 값 사용
     });
     */
-}
-
-// Safe concurrent data processing
-use rayon::prelude::*;
-
-fn parallel_processing() {
-    let data = vec![1, 2, 3, 4, 5];
-    
-    // Parallel iteration - guaranteed thread-safe
-    let results: Vec<i32> = data
-        .par_iter()
-        .map(|&x| x * x)
-        .collect();
-        
-    println!("{:?}", results);
-}
-
-// Async concurrency with message passing
-async fn async_message_passing() {
-    let (tx, mut rx) = mpsc::channel(100);
-    
-    // Producer task
-    let producer = tokio::spawn(async move {
-        for i in 0..10 {
-            if tx.send(i).await.is_err() {
-                break;
-            }
-        }
-    });
-    
-    // Consumer task  
-    let consumer = tokio::spawn(async move {
-        while let Some(value) = rx.recv().await {
-            println!("Received: {}", value);
-        }
-    });
-    
-    // Wait for both tasks
-    let (producer_result, consumer_result) = tokio::join!(producer, consumer);
-    producer_result.unwrap();
-    consumer_result.unwrap();
-}
-
-#[derive(Clone)]
-struct User {
-    id: i32,
-    name: String,
 }
 ```
 
 ```mermaid
 graph TD
-    subgraph "C# Thread Safety Challenges"
-        CS_MANUAL["Manual synchronization"]
-        CS_LOCKS["lock statements"]
+    subgraph "C# 스레드 안전성 도전 과제"
+        CS_MANUAL["수동 동기화"]
+        CS_LOCKS["lock 문"]
         CS_CONCURRENT["ConcurrentCollections"]
-        CS_VOLATILE["volatile fields"]
-        CS_FORGET["😰 Easy to forget locks"]
-        CS_DEADLOCK["💀 Deadlock possible"]
-        CS_RACE["🏃 Race conditions"]
-        CS_OVERHEAD["⚡ Runtime overhead"]
+        CS_VOLATILE["volatile 필드"]
+        CS_FORGET["😰 락을 잊기 쉬움"]
+        CS_DEADLOCK["💀 교착 상태(Deadlock) 가능성"]
+        CS_RACE["🏃 데이터 경합(Race conditions)"]
+        CS_OVERHEAD["⚡ 런타임 오버헤드"]
         
         CS_MANUAL --> CS_LOCKS
         CS_MANUAL --> CS_CONCURRENT
@@ -2176,15 +1305,15 @@ graph TD
         CS_LOCKS --> CS_OVERHEAD
     end
     
-    subgraph "Rust Type System Guarantees"
-        RUST_OWNERSHIP["Ownership system"]
-        RUST_BORROWING["Borrow checker"]
-        RUST_SEND["Send trait"]
-        RUST_SYNC["Sync trait"]
+    subgraph "Rust 타입 시스템의 보장"
+        RUST_OWNERSHIP["소유권 시스템"]
+        RUST_BORROWING["빌림 검사기"]
+        RUST_SEND["Send 트레이트"]
+        RUST_SYNC["Sync 트레이트"]
         RUST_ARC["Arc<Mutex<T>>"]
-        RUST_CHANNELS["Message passing"]
-        RUST_SAFE["✅ Data races impossible"]
-        RUST_FAST["⚡ Zero-cost abstractions"]
+        RUST_CHANNELS["메시지 패싱"]
+        RUST_SAFE["✅ 데이터 경합 불가능"]
+        RUST_FAST["⚡ 제로 비용 추상화"]
         
         RUST_OWNERSHIP --> RUST_BORROWING
         RUST_BORROWING --> RUST_SEND
@@ -2204,677 +1333,90 @@ graph TD
 
 ***
 
-## Incremental Adoption Strategy
+## 단계적 도입 전략 (Incremental Adoption Strategy)
 
-### Phase 1: Learning and Experimentation (Weeks 1-4)
-```rust
-// Start with command-line tools and utilities
-// Example: Log file analyzer
-use std::fs;
-use std::collections::HashMap;
-use clap::Parser;
+### 1단계: 학습 및 실험 (1~4주 차)
+커맨드 라인 도구(CLI)나 유틸리티부터 시작해 보세요. 예: 로그 파일 분석기.
 
-#[derive(Parser)]
-#[command(author, version, about)]
-struct Args {
-    #[arg(short, long)]
-    file: String,
-    
-    #[arg(short, long, default_value = "10")]
-    top: usize,
-}
+### 2단계: 성능이 중요한 컴포넌트 교체 (5~8주 차)
+CPU 집약적인 데이터 처리 로직을 Rust로 교체해 보세요. 예: 이미지 처리 마이크로서비스.
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
-    
-    let content = fs::read_to_string(&args.file)?;
-    let mut word_count = HashMap::new();
-    
-    for line in content.lines() {
-        for word in line.split_whitespace() {
-            let word = word.to_lowercase();
-            *word_count.entry(word).or_insert(0) += 1;
-        }
-    }
-    
-    let mut sorted: Vec<_> = word_count.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.cmp(&a.1));
-    
-    for (word, count) in sorted.into_iter().take(args.top) {
-        println!("{}: {}", word, count);
-    }
-    
-    Ok(())
-}
-```
-
-### Phase 2: Replace Performance-Critical Components (Weeks 5-8)
-```rust
-// Replace CPU-intensive data processing
-// Example: Image processing microservice
-use image::{DynamicImage, ImageBuffer, Rgb};
-use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use warp::Filter;
-
-#[derive(Serialize, Deserialize)]
-struct ProcessingRequest {
-    image_data: Vec<u8>,
-    operation: String,
-    parameters: serde_json::Value,
-}
-
-#[derive(Serialize)]
-struct ProcessingResponse {
-    processed_image: Vec<u8>,
-    processing_time_ms: u64,
-}
-
-async fn process_image(request: ProcessingRequest) -> Result<ProcessingResponse, Box<dyn std::error::Error + Send + Sync>> {
-    let start = std::time::Instant::now();
-    
-    let img = image::load_from_memory(&request.image_data)?;
-    
-    let processed = match request.operation.as_str() {
-        "blur" => {
-            let radius = request.parameters["radius"].as_f64().unwrap_or(2.0) as f32;
-            img.blur(radius)
-        }
-        "grayscale" => img.grayscale(),
-        "resize" => {
-            let width = request.parameters["width"].as_u64().unwrap_or(100) as u32;
-            let height = request.parameters["height"].as_u64().unwrap_or(100) as u32;
-            img.resize(width, height, image::imageops::FilterType::Lanczos3)
-        }
-        _ => return Err("Unknown operation".into()),
-    };
-    
-    let mut buffer = Vec::new();
-    processed.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
-    
-    Ok(ProcessingResponse {
-        processed_image: buffer,
-        processing_time_ms: start.elapsed().as_millis() as u64,
-    })
-}
-
-#[tokio::main]
-async fn main() {
-    let process_route = warp::path("process")
-        .and(warp::post())
-        .and(warp::body::json())
-        .and_then(|req: ProcessingRequest| async move {
-            match process_image(req).await {
-                Ok(response) => Ok(warp::reply::json(&response)),
-                Err(e) => Err(warp::reject::custom(ProcessingError(e.to_string()))),
-            }
-        });
-
-    warp::serve(process_route)
-        .run(([127, 0, 0, 1], 3030))
-        .await;
-}
-
-#[derive(Debug)]
-struct ProcessingError(String);
-impl warp::reject::Reject for ProcessingError {}
-```
-
-### Phase 3: New Microservices (Weeks 9-12)
-```rust
-// Build new services from scratch in Rust
-// Example: Authentication service
-use axum::{
-    extract::{Query, State},
-    http::StatusCode,
-    response::Json,
-    routing::{get, post},
-    Router,
-};
-use jsonwebtoken::{encode, decode, Header, Validation, EncodingKey, DecodingKey};
-use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Postgres};
-use uuid::Uuid;
-use bcrypt::{hash, verify, DEFAULT_COST};
-
-#[derive(Clone)]
-struct AppState {
-    db: Pool<Postgres>,
-    jwt_secret: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Claims {
-    sub: String,
-    exp: usize,
-}
-
-#[derive(Deserialize)]
-struct LoginRequest {
-    email: String,
-    password: String,
-}
-
-#[derive(Serialize)]
-struct LoginResponse {
-    token: String,
-    user_id: Uuid,
-}
-
-async fn login(
-    State(state): State<AppState>,
-    Json(request): Json<LoginRequest>,
-) -> Result<Json<LoginResponse>, StatusCode> {
-    let user = sqlx::query!(
-        "SELECT id, password_hash FROM users WHERE email = $1",
-        request.email
-    )
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let user = user.ok_or(StatusCode::UNAUTHORIZED)?;
-
-    if !verify(&request.password, &user.password_hash)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-    {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-
-    let claims = Claims {
-        sub: user.id.to_string(),
-        exp: (chrono::Utc::now() + chrono::Duration::hours(24)).timestamp() as usize,
-    };
-
-    let token = encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(state.jwt_secret.as_ref()),
-    )
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    Ok(Json(LoginResponse {
-        token,
-        user_id: user.id,
-    }))
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let database_url = std::env::var("DATABASE_URL")?;
-    let jwt_secret = std::env::var("JWT_SECRET")?;
-    
-    let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(20)
-        .connect(&database_url)
-        .await?;
-
-    let app_state = AppState {
-        db: pool,
-        jwt_secret,
-    };
-
-    let app = Router::new()
-        .route("/login", post(login))
-        .with_state(app_state);
-
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
-    axum::serve(listener, app).await?;
-    
-    Ok(())
-}
-```
+### 3단계: 새로운 마이크로서비스 구축 (9~12주 차)
+처음부터 Rust로 새로운 서비스를 구축해 보세요. 예: 인증 서비스.
 
 ***
 
-## C# to Rust Concept Mapping
+## C#에서 Rust로의 개념 매핑 (C# to Rust Concept Mapping)
 
-### Dependency Injection → Constructor Injection + Traits
-```csharp
-// C# with DI container
-services.AddScoped<IUserRepository, UserRepository>();
-services.AddScoped<IUserService, UserService>();
+### 의존성 주입(DI) → 생성자 주입 + 트레이트
+C#의 DI 컨테이너 대신 Rust에서는 트레이트를 활용한 생성자 주입을 주로 사용합니다.
 
-public class UserService
-{
-    private readonly IUserRepository _repository;
-    
-    public UserService(IUserRepository repository)
-    {
-        _repository = repository;
-    }
-}
-```
+### LINQ → 반복자 체인
+Rust의 반복자 체인은 C#의 LINQ에 대응하며, 제로 비용 추상화 덕분에 더 효율적입니다.
 
-```rust
-// Rust: Constructor injection with traits
-pub trait UserRepository {
-    async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, Error>;
-    async fn save(&self, user: &User) -> Result<(), Error>;
-}
+### Entity Framework → SQLx + 마이그레이션
+SQLx는 컴파일 타임에 쿼리를 검증하며, EF와 유사한 개발 경험을 제공합니다.
 
-pub struct UserService<R> 
-where 
-    R: UserRepository,
-{
-    repository: R,
-}
-
-impl<R> UserService<R> 
-where 
-    R: UserRepository,
-{
-    pub fn new(repository: R) -> Self {
-        Self { repository }
-    }
-    
-    pub async fn get_user(&self, id: Uuid) -> Result<Option<User>, Error> {
-        self.repository.find_by_id(id).await
-    }
-}
-
-// Usage
-let repository = PostgresUserRepository::new(pool);
-let service = UserService::new(repository);
-```
-
-### LINQ → Iterator Chains
-```csharp
-// C# LINQ
-var result = users
-    .Where(u => u.Age > 18)
-    .Select(u => u.Name.ToUpper())
-    .OrderBy(name => name)
-    .Take(10)
-    .ToList();
-```
-
-```rust
-// Rust: Iterator chains (zero-cost!)
-let result: Vec<String> = users
-    .iter()
-    .filter(|u| u.age > 18)
-    .map(|u| u.name.to_uppercase())
-    .collect::<Vec<_>>()
-    .into_iter()
-    .sorted()
-    .take(10)
-    .collect();
-
-// Or with itertools crate for more LINQ-like operations
-use itertools::Itertools;
-
-let result: Vec<String> = users
-    .iter()
-    .filter(|u| u.age > 18)
-    .map(|u| u.name.to_uppercase())
-    .sorted()
-    .take(10)
-    .collect();
-```
-
-### Entity Framework → SQLx + Migrations
-```csharp
-// C# Entity Framework
-public class ApplicationDbContext : DbContext
-{
-    public DbSet<User> Users { get; set; }
-}
-
-var user = await context.Users
-    .Where(u => u.Email == email)
-    .FirstOrDefaultAsync();
-```
-
-```rust
-// Rust: SQLx with compile-time checked queries
-use sqlx::{PgPool, FromRow};
-
-#[derive(FromRow)]
-struct User {
-    id: Uuid,
-    email: String,
-    name: String,
-}
-
-// Compile-time checked query
-let user = sqlx::query_as!(
-    User,
-    "SELECT id, email, name FROM users WHERE email = $1",
-    email
-)
-.fetch_optional(&pool)
-.await?;
-
-// Or with dynamic queries
-let user = sqlx::query_as::<_, User>(
-    "SELECT id, email, name FROM users WHERE email = $1"
-)
-.bind(email)
-.fetch_optional(&pool)
-.await?;
-```
-
-### Configuration → Config Crates
-```csharp
-// C# Configuration
-public class AppSettings
-{
-    public string DatabaseUrl { get; set; }
-    public int Port { get; set; }
-}
-
-var config = builder.Configuration.Get<AppSettings>();
-```
-
-```rust
-// Rust: Config with serde
-use config::{Config, ConfigError, Environment, File};
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
-struct AppSettings {
-    database_url: String,
-    port: u16,
-}
-
-impl AppSettings {
-    pub fn new() -> Result<Self, ConfigError> {
-        let s = Config::builder()
-            .add_source(File::with_name("config/default"))
-            .add_source(Environment::with_prefix("APP"))
-            .build()?;
-
-        s.try_deserialize()
-    }
-}
-
-// Usage
-let settings = AppSettings::new()?;
-```
+### 설정(Configuration) → Config 크레이트
+C#의 IConfiguration 대신 Rust에서는 `config`와 `serde`를 결합하여 설정을 관리합니다.
 
 ***
 
-## Team Adoption Timeline
+## 팀 도입 타임라인 (Team Adoption Timeline)
 
-### Month 1: Foundation
-**Week 1-2: Syntax and Ownership**
-- Basic syntax differences from C#
-- Understanding ownership, borrowing, and lifetimes
-- Small exercises: CLI tools, file processing
+### 1개월 차: 기초 다지기
+- 구문 및 소유권 이해
+- 에러 처리 및 타입 시스템 익히기
 
-**Week 3-4: Error Handling and Types**
-- `Result<T, E>` vs exceptions
-- `Option<T>` vs nullable types
-- Pattern matching and exhaustive checking
+### 2개월 차: 실전 적용
+- 트레이트 및 제네릭 활용
+- 비동기 프로그래밍 및 동시성 제어
 
-**Recommended exercises:**
-```rust
-// Week 1-2: File processor
-fn process_log_file(path: &str) -> Result<Vec<String>, std::io::Error> {
-    let content = std::fs::read_to_string(path)?;
-    let errors: Vec<String> = content
-        .lines()
-        .filter(|line| line.contains("ERROR"))
-        .map(|line| line.to_string())
-        .collect();
-    Ok(errors)
-}
-
-// Week 3-4: JSON processor with error handling
-use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize, Serialize, Debug)]
-struct LogEntry {
-    timestamp: String,
-    level: String,
-    message: String,
-}
-
-fn parse_log_entries(json_str: &str) -> Result<Vec<LogEntry>, Box<dyn std::error::Error>> {
-    let entries: Vec<LogEntry> = serde_json::from_str(json_str)?;
-    Ok(entries)
-}
-```
-
-### Month 2: Practical Applications
-**Week 5-6: Traits and Generics**
-- Trait system vs interfaces
-- Generic constraints and bounds
-- Common patterns and idioms
-
-**Week 7-8: Async Programming and Concurrency**
-- `async`/`await` similarities and differences
-- Channels for communication
-- Thread safety guarantees
-
-**Recommended projects:**
-```rust
-// Week 5-6: Generic data processor
-trait DataProcessor<T> {
-    type Output;
-    type Error;
-    
-    fn process(&self, data: T) -> Result<Self::Output, Self::Error>;
-}
-
-struct JsonProcessor;
-
-impl DataProcessor<&str> for JsonProcessor {
-    type Output = serde_json::Value;
-    type Error = serde_json::Error;
-    
-    fn process(&self, data: &str) -> Result<Self::Output, Self::Error> {
-        serde_json::from_str(data)
-    }
-}
-
-// Week 7-8: Async web client
-async fn fetch_and_process_data(urls: Vec<&str>) -> Result<(), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-    
-    let tasks: Vec<_> = urls
-        .into_iter()
-        .map(|url| {
-            let client = client.clone();
-            tokio::spawn(async move {
-                let response = client.get(url).send().await?;
-                let text = response.text().await?;
-                println!("Fetched {} bytes from {}", text.len(), url);
-                Ok::<(), reqwest::Error>(())
-            })
-        })
-        .collect();
-    
-    for task in tasks {
-        task.await??;
-    }
-    
-    Ok(())
-}
-```
-
-### Month 3+: Production Integration
-**Week 9-12: Real Project Work**
-- Choose a non-critical component to rewrite
-- Implement comprehensive error handling
-- Add logging, metrics, and testing
-- Performance profiling and optimization
-
-**Ongoing: Team Review and Mentoring**
-- Code reviews focusing on Rust idioms
-- Pair programming sessions
-- Knowledge sharing sessions
+### 3개월 차 이상: 운영 환경 통합
+- 실제 프로젝트 적용
+- 성능 프로파일링 및 최적화
 
 ***
 
-## Performance Comparison: Managed vs Native
+## 성능 비교: 관리형 vs 네이티브 (Performance Comparison)
 
-### Real-World Performance Characteristics
+### 실제 성능 특성
 
-| **Aspect** | **C# (.NET)** | **Rust** | **Performance Impact** |
+| **항목** | **C# (.NET)** | **Rust** | **성능 영향** |
 |------------|---------------|----------|------------------------|
-| **Startup Time** | 100-500ms (JIT compilation) | 1-10ms (native binary) | 🚀 **50-500x faster** |
-| **Memory Usage** | +30-100% (GC overhead + metadata) | Baseline (minimal runtime) | 💾 **30-50% less RAM** |
-| **GC Pauses** | 1-100ms periodic pauses | Never (no GC) | ⚡ **Consistent latency** |
-| **CPU Usage** | +10-20% (GC + JIT overhead) | Baseline (direct execution) | 🔋 **10-20% better efficiency** |
-| **Binary Size** | 30-200MB (with runtime) | 1-20MB (static binary) | 📦 **10x smaller deployments** |
-| **Memory Safety** | Runtime checks | Compile-time proofs | 🛡️ **Zero overhead safety** |
-| **Concurrent Performance** | Good (with careful synchronization) | Excellent (fearless concurrency) | 🏃 **Superior scalability** |
+| **시작 시간** | 100-500ms (JIT 컴파일) | 1-10ms (네이티브 바이너리) | 🚀 **50-500배 빠름** |
+| **메모리 사용량** | +30-100% (GC 오버헤드 + 메타데이터) | 기준점 (최소한의 런타임) | 💾 **30-50% 적은 RAM 사용** |
+| **GC 중단** | 1-100ms 주기적 중단 | 없음 (GC 없음) | ⚡ **일관된 지연 시간** |
+| **바이너리 크기** | 30-200MB (런타임 포함) | 1-20MB (정적 바이너리) | 📦 **10배 작은 배포 크기** |
 
-### Benchmark Examples
-
-```csharp
-// C# - JSON processing benchmark
-public class JsonProcessor
-{
-    public async Task<List<User>> ProcessJsonFile(string path)
-    {
-        var json = await File.ReadAllTextAsync(path);
-        var users = JsonSerializer.Deserialize<List<User>>(json);
-        
-        return users.Where(u => u.Age > 18)
-                   .OrderBy(u => u.Name)
-                   .Take(1000)
-                   .ToList();
-    }
-}
-
-// Typical performance: ~200ms for 100MB file
-// Memory usage: ~500MB peak (GC overhead)
-// Binary size: ~80MB (self-contained)
-```
-
-```rust
-// Rust - Equivalent JSON processing
-use serde::{Deserialize, Serialize};
-use tokio::fs;
-
-#[derive(Deserialize, Serialize)]
-struct User {
-    name: String,
-    age: u32,
-}
-
-pub async fn process_json_file(path: &str) -> Result<Vec<User>, Box<dyn std::error::Error>> {
-    let json = fs::read_to_string(path).await?;
-    let mut users: Vec<User> = serde_json::from_str(&json)?;
-    
-    users.retain(|u| u.age > 18);
-    users.sort_by(|a, b| a.name.cmp(&b.name));
-    users.truncate(1000);
-    
-    Ok(users)
-}
-
-// Typical performance: ~120ms for same 100MB file
-// Memory usage: ~200MB peak (no GC overhead)
-// Binary size: ~8MB (static binary)
-```
-
-### CPU-Intensive Workloads
-
-```csharp
-// C# - Mathematical computation
-public class Mandelbrot
-{
-    public static int[,] Generate(int width, int height, int maxIterations)
-    {
-        var result = new int[height, width];
-        
-        Parallel.For(0, height, y =>
-        {
-            for (int x = 0; x < width; x++)
-            {
-                var c = new Complex(
-                    (x - width / 2.0) * 4.0 / width,
-                    (y - height / 2.0) * 4.0 / height);
-                
-                result[y, x] = CalculateIterations(c, maxIterations);
-            }
-        });
-        
-        return result;
-    }
-}
-
-// Performance: ~2.3 seconds (8-core machine)
-// Memory: ~500MB
-```
-
-```rust
-// Rust - Same computation with Rayon
-use rayon::prelude::*;
-use num_complex::Complex;
-
-pub fn generate_mandelbrot(width: usize, height: usize, max_iterations: u32) -> Vec<Vec<u32>> {
-    (0..height)
-        .into_par_iter()
-        .map(|y| {
-            (0..width)
-                .map(|x| {
-                    let c = Complex::new(
-                        (x as f64 - width as f64 / 2.0) * 4.0 / width as f64,
-                        (y as f64 - height as f64 / 2.0) * 4.0 / height as f64,
-                    );
-                    calculate_iterations(c, max_iterations)
-                })
-                .collect()
-        })
-        .collect()
-}
-
-// Performance: ~1.1 seconds (same 8-core machine)  
-// Memory: ~200MB
-// 2x faster with 60% less memory usage
-```
-
-### When to Choose Each Language
-
-**Choose C# when:**
-- **Rapid development is crucial** - Rich tooling ecosystem
-- **Team expertise in .NET** - Existing knowledge and skills
-- **Enterprise integration** - Heavy use of Microsoft ecosystem
-- **Moderate performance requirements** - Performance is adequate
-- **Rich UI applications** - WPF, WinUI, Blazor applications
-- **Prototyping and MVPs** - Fast time to market
-
-**Choose Rust when:**
-- **Performance is critical** - CPU/memory-intensive applications
-- **Resource constraints matter** - Embedded, edge computing, serverless
-- **Long-running services** - Web servers, databases, system services
-- **System-level programming** - OS components, drivers, network tools
-- **High reliability requirements** - Financial systems, safety-critical applications
-- **Concurrent/parallel workloads** - High-throughput data processing
-
-### Migration Strategy Decision Tree
+### 마이그레이션 전략 결정 트리
 
 ```mermaid
 graph TD
-    START["Considering Rust?"]
-    PERFORMANCE["Is performance critical?"]
-    TEAM["Team has time to learn?"]
-    EXISTING["Large existing C# codebase?"]
-    NEW_PROJECT["New project or component?"]
+    START["Rust 도입을 고민 중인가요?"]
+    PERFORMANCE["성능이 매우 중요한가요?"]
+    TEAM["팀이 학습할 시간이 있나요?"]
+    EXISTING["기존 C# 코드베이스가 방대한가요?"]
+    NEW_PROJECT["신규 프로젝트 또는 컴포넌트인가요?"]
     
-    INCREMENTAL["Incremental adoption:<br/>• CLI tools first<br/>• Performance-critical components<br/>• New microservices"]
+    INCREMENTAL["단계적 도입:<br/>• CLI 도구부터 시작<br/>• 성능이 중요한 컴포넌트 교체<br/>• 새로운 마이크로서비스"]
     
-    FULL_RUST["Full Rust adoption:<br/>• Greenfield projects<br/>• System-level services<br/>• High-performance APIs"]
+    FULL_RUST["전체 Rust 도입:<br/>• 신규(Greenfield) 프로젝트<br/>• 시스템 레벨 서비스<br/>• 고성능 API"]
     
-    STAY_CSHARP["Stay with C#:<br/>• Optimize existing code<br/>• Use .NET performance features<br/>• Consider .NET Native"]
+    STAY_CSHARP["C# 유지:<br/>• 기존 코드 최적화<br/>• .NET 성능 기능 활용<br/>• .NET Native 고려"]
     
     START --> PERFORMANCE
-    PERFORMANCE -->|Yes| TEAM
-    PERFORMANCE -->|No| STAY_CSHARP
+    PERFORMANCE -->|예| TEAM
+    PERFORMANCE -->|아니요| STAY_CSHARP
     
-    TEAM -->|Yes| EXISTING
-    TEAM -->|No| STAY_CSHARP
+    TEAM -->|예| EXISTING
+    TEAM -->|아니요| STAY_CSHARP
     
-    EXISTING -->|Yes| NEW_PROJECT
-    EXISTING -->|No| FULL_RUST
+    EXISTING -->|예| NEW_PROJECT
+    EXISTING -->|아니요| FULL_RUST
     
-    NEW_PROJECT -->|New| FULL_RUST
-    NEW_PROJECT -->|Existing| INCREMENTAL
+    NEW_PROJECT -->|신규| FULL_RUST
+    NEW_PROJECT -->|기존| INCREMENTAL
     
     style FULL_RUST fill:#c8e6c9
     style INCREMENTAL fill:#fff3e0
@@ -2883,141 +1425,18 @@ graph TD
 
 ***
 
-## Best Practices for C# Developers
+## C# 개발자를 위한 권장 사례 (Best Practices for C# Developers)
 
-### 1. **Mindset Shifts**
-- **From GC to Ownership**: Think about who owns data and when it's freed
-- **From Exceptions to Results**: Make error handling explicit and visible
-- **From Inheritance to Composition**: Use traits to compose behavior
-- **From Null to Option**: Make absence of values explicit in the type system
+### 1. 사고방식의 전환 (Mindset Shifts)
+- **GC에서 소유권으로**: 누가 데이터를 소유하고 언제 해제되는지 생각하세요.
+- **예외에서 Result로**: 에러 처리를 명시적이고 시각적으로 만드세요.
+- **상속에서 구성으로**: 트레이트를 사용하여 동작을 조합하세요.
+- **Null에서 Option으로**: 값이 없음을 타입 시스템에서 명시적으로 표현하세요.
 
-### 2. **Code Organization**
-```rust
-// Structure projects like C# solutions
-src/
-├── main.rs          // Program.cs equivalent
-├── lib.rs           // Library entry point
-├── models/          // Like Models/ folder in C#
-│   ├── mod.rs
-│   ├── user.rs
-│   └── product.rs
-├── services/        // Like Services/ folder
-│   ├── mod.rs
-│   ├── user_service.rs
-│   └── product_service.rs
-├── controllers/     // Like Controllers/ (for web apps)
-├── repositories/    // Like Repositories/
-└── utils/          // Like Utilities/
-```
+### 2. 흔히 저지르는 실수 피하기
+- **상속을 구현하려고 하지 마세요**: Rust에는 클래스 상속이 없습니다. 대신 트레이트 구성을 사용하세요.
+- **모든 곳에 unwrap()을 사용하지 마세요**: 이는 예외를 무시하는 것과 같습니다. 에러를 제대로 처리하세요.
+- **모든 것을 clone() 하지 마세요**: 불필요한 객체 복사는 피하고, 가능한 경우 빌림(Borrowing)을 사용하세요.
+- **모든 곳에 RefCell을 사용하지 마세요**: 내부 가변성은 꼭 필요한 경우에만 신중하게 사용하세요.
 
-### 3. **Error Handling Strategy**
-```rust
-// Create a common Result type for your application
-pub type AppResult<T> = Result<T, AppError>;
-
-#[derive(Error, Debug)]
-pub enum AppError {
-    #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
-    
-    #[error("HTTP error: {0}")]
-    Http(#[from] reqwest::Error),
-    
-    #[error("Validation error: {message}")]
-    Validation { message: String },
-    
-    #[error("Business logic error: {message}")]
-    Business { message: String },
-}
-
-// Use throughout your application
-pub async fn create_user(data: CreateUserRequest) -> AppResult<User> {
-    validate_user_data(&data)?;  // Returns AppError::Validation
-    let user = repository.create_user(data).await?;  // Returns AppError::Database
-    Ok(user)
-}
-```
-
-### 4. **Testing Patterns**
-```rust
-// Structure tests like C# unit tests
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rstest::*;  // For parameterized tests like C# [Theory]
-    
-    #[test]
-    fn test_basic_functionality() {
-        // Arrange
-        let input = "test data";
-        
-        // Act
-        let result = process_data(input);
-        
-        // Assert
-        assert_eq!(result, "expected output");
-    }
-    
-    #[rstest]
-    #[case(1, 2, 3)]
-    #[case(5, 5, 10)]
-    #[case(0, 0, 0)]
-    fn test_addition(#[case] a: i32, #[case] b: i32, #[case] expected: i32) {
-        assert_eq!(add(a, b), expected);
-    }
-    
-    #[tokio::test]  // For async tests
-    async fn test_async_functionality() {
-        let result = async_function().await;
-        assert!(result.is_ok());
-    }
-}
-```
-
-### 5. **Common Mistakes to Avoid**
-```rust
-// [ERROR] Don't try to implement inheritance
-// Instead of:
-// struct Manager : Employee  // This doesn't exist in Rust
-
-// [OK] Use composition with traits
-trait Employee {
-    fn get_salary(&self) -> u32;
-}
-
-trait Manager: Employee {
-    fn get_team_size(&self) -> usize;
-}
-
-// [ERROR] Don't use unwrap() everywhere (like ignoring exceptions)
-let value = might_fail().unwrap();  // Can panic!
-
-// [OK] Handle errors properly
-let value = match might_fail() {
-    Ok(v) => v,
-    Err(e) => {
-        log::error!("Operation failed: {}", e);
-        return Err(e.into());
-    }
-};
-
-// [ERROR] Don't clone everything (like copying objects unnecessarily)
-let data = expensive_data.clone();  // Expensive!
-
-// [OK] Use borrowing when possible
-let data = &expensive_data;  // Just a reference
-
-// [ERROR] Don't use RefCell everywhere (like making everything mutable)
-struct Data {
-    value: RefCell<i32>,  // Interior mutability - use sparingly
-}
-
-// [OK] Prefer owned or borrowed data
-struct Data {
-    value: i32,  // Simple and clear
-}
-```
-
-This guide provides C# developers with a comprehensive understanding of how their existing knowledge translates to Rust, highlighting both the similarities and the fundamental differences in approach. The key is understanding that Rust's constraints (like ownership) are designed to prevent entire classes of bugs that are possible in C#, at the cost of some initial complexity.
-
-
+이 가이드는 C# 개발자들이 기존 지식을 Rust로 어떻게 전환할 수 있는지에 대한 포괄적인 이해를 돕습니다. Rust의 제약 조건(소유권 등)은 초기 학습 난이도가 높을 수 있지만, C#에서 발생할 수 있는 수많은 버그를 컴파일 타임에 차단하기 위해 설계된 강력한 도구임을 이해하는 것이 중요합니다.

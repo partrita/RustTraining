@@ -1,106 +1,105 @@
-# Summary and Reference Card
+# 요약 및 참조 카드 (Summary and Reference Card)
 
-## Quick Reference Card
+## 빠른 참조 카드 (Quick Reference Card)
 
-### Async Mental Model
+### 비동기 멘탈 모델
 
 ```text
 ┌─────────────────────────────────────────────────────┐
-│  async fn → State Machine (enum) → impl Future     │
-│  .await   → poll() the inner future                 │
-│  executor → loop { poll(); sleep_until_woken(); }   │
-│  waker    → "hey executor, poll me again"           │
-│  Pin      → "promise I won't move in memory"        │
+│  async fn → 상태 머신 (열거형) → impl Future        │
+│  .await   → 내부 퓨처를 poll() 함                   │
+│  실행기   → loop { poll(); 깨어날 때까지 잠듦; }    │
+│  웨이커   → "이봐 실행기, 나를 다시 폴링해줘"       │
+│  Pin      → "메모리에서 이동하지 않겠다고 약속함"   │
 └─────────────────────────────────────────────────────┘
 ```
 
-### Common Patterns Cheat Sheet
+### 흔히 사용되는 패턴 치트 시트
 
-| Goal | Use |
+| 목표 | 방법 |
 |------|-----|
-| Run two futures concurrently | `tokio::join!(a, b)` |
-| Race two futures | `tokio::select! { ... }` |
-| Spawn a background task | `tokio::spawn(async { ... })` |
-| Run blocking code in async | `tokio::task::spawn_blocking(\\|\\| { ... })` |
-| Limit concurrency | `Semaphore::new(N)` |
-| Collect many task results | `JoinSet` |
-| Share state across tasks | `Arc<Mutex<T>>` or channels |
-| Graceful shutdown | `watch::channel` + `select!` |
-| Process a stream N-at-a-time | `.buffer_unordered(N)` |
-| Timeout a future | `tokio::time::timeout(dur, fut)` |
-| Retry with backoff | Custom combinator (see Ch. 13) |
+| 두 퓨처를 동시에 실행 | `tokio::join!(a, b)` |
+| 두 퓨처 경합 처리 | `tokio::select! { ... }` |
+| 백그라운드 태스크 스폰 | `tokio::spawn(async { ... })` |
+| 비동기에서 블로킹 코드 실행 | `tokio::task::spawn_blocking(\\|\\| { ... })` |
+| 동시성 제한 | `Semaphore::new(N)` |
+| 수많은 태스크 결과 수집 | `JoinSet` |
+| 태스크 간 상태 공유 | `Arc<Mutex<T>>` 또는 채널 |
+| 우아한 종료 | `watch::channel` + `select!` |
+| 스트림을 N개씩 동시에 처리 | `.buffer_unordered(N)` |
+| 퓨처에 타임아웃 적용 | `tokio::time::timeout(dur, fut)` |
+| 백오프와 함께 재시도 | 커스텀 결합기 (13장 참조) |
 
-### Pinning Quick Reference
+### 피닝(Pinning) 빠른 참조
 
-| Situation | Use |
+| 상황 | 방법 |
 |-----------|-----|
-| Pin a future on the heap | `Box::pin(fut)` |
-| Pin a future on the stack | `tokio::pin!(fut)` |
-| Pin an `Unpin` type | `Pin::new(&mut val)` — safe, free |
-| Return a pinned trait object | `-> Pin<Box<dyn Future<Output = T> + Send>>` |
+| 퓨처를 힙에 고정 | `Box::pin(fut)` |
+| 퓨처를 스택에 고정 | `tokio::pin!(fut)` |
+| `Unpin` 타입을 고정 | `Pin::new(&mut val)` — 안전하고 비용 없음 |
+| 고정된 트레이트 객체 반환 | `-> Pin<Box<dyn Future<Output = T> + Send>>` |
 
-### Channel Selection Guide
+### 채널 선택 가이드
 
-| Channel | Producers | Consumers | Values | Use When |
+| 채널 | 생산자 | 소비자 | 값 | 사용 시점 |
 |---------|-----------|-----------|--------|----------|
-| `mpsc` | N | 1 | Stream | Work queues, event buses |
-| `oneshot` | 1 | 1 | Single | Request/response, completion notification |
-| `broadcast` | N | N | All recv all | Fan-out notifications, shutdown signals |
-| `watch` | 1 | N | Latest only | Config updates, health status |
+| `mpsc` | N | 1 | 스트림 | 작업 큐, 이벤트 버스 |
+| `oneshot` | 1 | 1 | 단일 값 | 요청/응답, 완료 알림 |
+| `broadcast` | N | N | 모두 수신 | 알림 전파(Fan-out), 종료 시그널 |
+| `watch` | 1 | N | 최신 값만 | 설정 업데이트, 상태 확인 |
 
-### Mutex Selection Guide
+### 뮤텍스(Mutex) 선택 가이드
 
-| Mutex | Use When |
+| 뮤텍스 | 사용 시점 |
 |-------|----------|
-| `std::sync::Mutex` | Lock is held briefly, never across `.await` |
-| `tokio::sync::Mutex` | Lock must be held across `.await` |
-| `parking_lot::Mutex` | High contention, no `.await`, need performance |
-| `tokio::sync::RwLock` | Many readers, few writers, locks cross `.await` |
+| `std::sync::Mutex` | 짧게 유지되는 락, `.await`를 가로지르지 않을 때 |
+| `tokio::sync::Mutex` | `.await` 지점을 가로질러 락을 유지해야 할 때 |
+| `parking_lot::Mutex` | 경합이 심하고 `.await`가 없으며 성능이 중요할 때 |
+| `tokio::sync::RwLock` | 읽기 주체가 많고 쓰기가 적으며, 락이 `.await`를 가로지를 때 |
 
-### Decision Quick Reference
+### 의사 결정 빠른 참조
 
 ```text
-Need concurrency?
-├── I/O-bound → async/await
-├── CPU-bound → rayon / std::thread
-└── Mixed → spawn_blocking for CPU parts
+동시성(concurrency)이 필요한가요?
+├── I/O 바운드 → async/await
+├── CPU 바운드 → rayon / std::thread
+└── 혼합됨 → CPU 부분에 spawn_blocking 사용
 
-Choosing runtime?
-├── Server app → tokio
-├── Library → runtime-agnostic (futures crate)
-├── Embedded → embassy
-└── Minimal → smol
+런타임을 선택하시나요?
+├── 서버 앱 → tokio
+├── 라이브러리 → 런타임 중립적 (futures 크레이트)
+├── 임베디드 → embassy
+└── 최소 기능 → smol
 
-Need concurrent futures?
-├── Can be 'static + Send → tokio::spawn
-├── Can be 'static + !Send → LocalSet
-├── Can't be 'static → FuturesUnordered
-└── Need to track/abort → JoinSet
+동시 실행 퓨처가 필요한가요?
+├── 'static + Send 가능 → tokio::spawn
+├── 'static + !Send 가능 → LocalSet
+├── 'static 불가능 → FuturesUnordered
+└── 추적/중단 필요 → JoinSet
 ```
 
-### Common Error Messages and Fixes
+### 흔한 에러 메시지 및 해결 방법
 
-| Error | Cause | Fix |
+| 에러 | 원인 | 해결 방법 |
 |-------|-------|-----|
-| `future is not Send` | Holding `!Send` type across `.await` | Scope the value so it's dropped before `.await`, or use `current_thread` runtime |
-| `borrowed value does not live long enough` in spawn | `tokio::spawn` requires `'static` | Use `Arc`, `clone()`, or `FuturesUnordered` |
-| `the trait Future is not implemented for ()` | Missing `.await` | Add `.await` to the async call |
-| `cannot borrow as mutable` in poll | Self-referential borrow | Use `Pin<&mut Self>` correctly (see Ch. 4) |
-| Program hangs silently | Forgot to call `waker.wake()` | Ensure every `Pending` path registers and triggers the waker |
+| `future is not Send` | `.await`를 가로질러 `!Send` 타입 보유 | 해당 값을 `.await` 전에 드롭되도록 범위를 좁히거나, `current_thread` 런타임 사용 |
+| `borrowed value does not live long enough` (spawn 시) | `tokio::spawn`은 `'static`을 요구함 | `Arc`, `clone()`을 사용하거나 `FuturesUnordered` 고려 |
+| `the trait Future is not implemented for ()` | `.await` 누락 | 비동기 호출에 `.await` 추가 |
+| `cannot borrow as mutable` (poll 내에서) | 자기 참조 빌려오기 | `Pin<&mut Self>`를 올바르게 사용 (4장 참조) |
+| 프로그램이 조용히 멈춤 | `waker.wake()` 호출 잊음 | 모든 `Pending` 경로에서 웨이커를 등록하고 트리거하는지 확인 |
 
-### Further Reading
+### 더 읽을거리
 
-| Resource | Why |
+| 리소스 | 이유 |
 |----------|-----|
-| [Tokio Tutorial](https://tokio.rs/tokio/tutorial) | Official hands-on guide — excellent for first projects |
-| [Async Book (official)](https://rust-lang.github.io/async-book/) | Covers `Future`, `Pin`, `Stream` at the language level |
-| [Jon Gjengset — Crust of Rust: async/await](https://www.youtube.com/watch?v=ThjvMReOXYM) | 2-hour deep dive into internals with live coding |
-| [Alice Ryhl — Actors with Tokio](https://ryhl.io/blog/actors-with-tokio/) | Production architecture pattern for stateful services |
-| [Without Boats — Pin, Unpin, and why Rust needs them](https://without.boats/blog/pin/) | The original motivation from the language designer |
-| [Tokio mini-Redis](https://github.com/tokio-rs/mini-redis) | Complete async Rust project — study-quality production code |
-| [Tower documentation](https://docs.rs/tower) | Middleware/service architecture used by axum, tonic, hyper |
+| [Tokio 튜토리얼](https://tokio.rs/tokio/tutorial) | 공식 실습 가이드 — 첫 프로젝트에 최적 |
+| [비동기 북 (공식)](https://rust-lang.github.io/async-book/) | 언어 수준에서의 `Future`, `Pin`, `Stream` 설명 |
+| [Jon Gjengset — Crust of Rust: async/await](https://www.youtube.com/watch?v=ThjvMReOXYM) | 라이브 코딩과 함께하는 2시간짜리 내부 구조 심층 분석 |
+| [Alice Ryhl — Actors with Tokio](https://ryhl.io/blog/actors-with-tokio/) | 상태 저장 서비스를 위한 운영 아키텍처 패턴 |
+| [Without Boats — Pin, Unpin, and why Rust needs them](https://without.boats/blog/pin/) | 언어 설계자가 밝히는 원래의 동기 |
+| [Tokio mini-Redis](https://github.com/tokio-rs/mini-redis) | 완전한 비동기 Rust 프로젝트 — 학습하기 좋은 운영 수준 코드 |
+| [Tower 문서](https://docs.rs/tower) | axum, tonic, hyper에서 사용되는 미들웨어/서비스 아키텍처 |
 
 ***
 
-*End of Async Rust Training Guide*
-
+*비동기 Rust 교육 가이드 끝*

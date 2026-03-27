@@ -1,94 +1,92 @@
-## Rust Macros: From Preprocessor to Metaprogramming
+# Rust 매크로: 전처리기에서 메타프로그래밍까지
 
-> **What you'll learn:** How Rust macros work, when to use them instead of functions or generics, and how they replace the C/C++ preprocessor. By the end of this chapter you can write your own `macro_rules!` macros and understand what `#[derive(Debug)]` does under the hood.
+> **학습 내용:** Rust 매크로의 작동 방식, 함수나 제네릭 대신 매크로를 사용하는 시점, 그리고 매크로가 C/C++ 전처리기를 어떻게 대체하는지 배웁니다. 이 장을 마치면 직접 `macro_rules!` 매크로를 작성할 수 있고 `#[derive(Debug)]`가 내부적으로 어떤 일을 하는지 이해하게 될 것입니다.
 
-Macros are one of the first things you encounter in Rust (`println!("hello")` on line one) but one of the last things most courses explain. This chapter fixes that.
+매크로는 Rust를 시작하자마자 접하게 되는 기능이지만(`println!("hello")`), 대부분의 강좌에서 가장 나중에 설명하는 기능이기도 합니다. 이 장에서는 그 간격을 메워보겠습니다.
 
-### Why Macros Exist
+### 매크로가 존재하는 이유
 
-Functions and generics handle most code reuse in Rust. Macros fill the gaps where the type system can't reach:
+Rust에서 코드 재사용은 대부분 함수와 제네릭이 담당합니다. 매크로는 타입 시스템이 닿지 못하는 틈새를 채워줍니다.
 
-| Need | Function/Generic? | Macro? | Why |
+| 요구 사항 | 함수/제네릭으로 가능한가? | 매크로로 가능한가? | 이유 |
 |------|-------------------|--------|-----|
-| Compute a value | ✅ `fn max<T: Ord>(a: T, b: T) -> T` | — | Type system handles it |
-| Accept variable number of arguments | ❌ Rust has no variadic functions | ✅ `println!("{} {}", a, b)` | Macros accept any number of tokens |
-| Generate repetitive `impl` blocks | ❌ No way with generics alone | ✅ `macro_rules!` | Macros generate code at compile time |
-| Run code at compile time | ❌ `const fn` is limited | ✅ Procedural macros | Full Rust code runs at compile time |
-| Conditionally include code | ❌ | ✅ `#[cfg(...)]` | Attribute macros control compilation |
+| 값 계산 | ✅ `fn max<T: Ord>(a: T, b: T) -> T` | — | 타입 시스템이 처리 가능함 |
+| 가변 인자(Variable number of arguments) 수용 | ❌ Rust에는 가변 인자 함수가 없음 | ✅ `println!("{} {}", a, b)` | 매크로는 어떤 수의 토큰도 수용함 |
+| 반복적인 `impl` 블록 생성 | ❌ 제네릭만으로는 불가능함 | ✅ `macro_rules!` | 매크로는 컴파일 타임에 코드를 생성함 |
+| 컴파일 타임에 코드 실행 | ❌ `const fn`은 제한적임 | ✅ 절차적 매크로 (Procedural macros) | 컴파일 타임에 완전한 Rust 코드 실행 가능 |
+| 조건부 코드 포함 | ❌ | ✅ `#[cfg(...)]` | 속성 매크로가 컴파일을 제어함 |
 
-If you're coming from C/C++, think of macros as the *only correct replacement for the preprocessor* — except they operate on the syntax tree instead of raw text, so they're hygienic (no accidental name collisions) and type-aware.
-
-> **For C developers:** Rust macros replace `#define` entirely. There is no textual preprocessor. See [ch18](ch18-cpp-rust-semantic-deep-dives.md) for the full preprocessor → Rust mapping.
+C/C++ 개발자라면 매크로를 *전처리기를 대체할 수 있는 유일하고 올바른 대안*으로 생각하십시오. 다만 Rust 매크로는 가공되지 않은 텍스트가 아닌 구문 트리(syntax tree) 상에서 작동하므로, 위생적(hygienic, 이름 충돌 없음)이고 타입을 인식할 수 있습니다.
 
 ---
 
-## Declarative Macros with `macro_rules!`
+## `macro_rules!`를 사용한 선언적 매크로 (Declarative Macros)
 
-Declarative macros (also called "macros by example") are Rust's most common macro form. They use pattern matching on syntax, similar to `match` on values.
+선언적 매크로(또는 "예시에 의한 매크로")는 Rust에서 가장 흔한 매크로 형태입니다. 값에 대해 `match`를 사용하듯 구문에 대해 패턴 매칭을 수행합니다.
 
-### Basic syntax
+### 기본 문법
 
 ```rust
 macro_rules! say_hello {
     () => {
-        println!("Hello!");
+        println!("안녕하세요!");
     };
 }
 
 fn main() {
-    say_hello!();  // Expands to: println!("Hello!");
+    say_hello!();  // 다음으로 확장됨: println!("안녕하세요!");
 }
 ```
 
-The `!` after the name is what tells you (and the compiler) this is a macro invocation.
+이름 뒤의 `!`는 컴파일러와 개발자에게 이것이 매크로 호출임을 알려줍니다.
 
-### Pattern matching with arguments
+### 인자를 사용한 패턴 매칭
 
-Macros match on *token trees* using fragment specifiers:
+매크로는 조각 지정자(fragment specifiers)를 사용하여 *토큰 트리*에 대해 매칭을 수행합니다.
 
 ```rust
 macro_rules! greet {
-    // Pattern 1: no arguments
+    // 패턴 1: 인자 없음
     () => {
-        println!("Hello, world!");
+        println!("안녕하세요, 세상아!");
     };
-    // Pattern 2: one expression argument
+    // 패턴 2: 하나의 식(expression) 인자
     ($name:expr) => {
-        println!("Hello, {}!", $name);
+        println!("안녕하세요, {}님!", $name);
     };
 }
 
 fn main() {
-    greet!();           // "Hello, world!"
-    greet!("Rust");     // "Hello, Rust!"
+    greet!();           // "안녕하세요, 세상아!"
+    greet!("Rust");     // "안녕하세요, Rust님!"
 }
 ```
 
-#### Fragment specifiers reference
+#### 조각 지정자(Fragment specifiers) 참조
 
-| Specifier | Matches | Example |
+| 지정자 | 매칭 대상 | 예시 |
 |-----------|---------|---------|
-| `$x:expr` | Any expression | `42`, `a + b`, `foo()` |
-| `$x:ty` | A type | `i32`, `Vec<String>`, `&str` |
-| `$x:ident` | An identifier | `foo`, `my_var` |
-| `$x:pat` | A pattern | `Some(x)`, `_`, `(a, b)` |
-| `$x:stmt` | A statement | `let x = 5;` |
-| `$x:block` | A block | `{ println!("hi"); 42 }` |
-| `$x:literal` | A literal | `42`, `"hello"`, `true` |
-| `$x:tt` | A single token tree | Anything — the wildcard |
-| `$x:item` | An item (fn, struct, impl, etc.) | `fn foo() {}` |
+| `$x:expr` | 모든 식(expression) | `42`, `a + b`, `foo()` |
+| `$x:ty` | 타입 | `i32`, `Vec<String>`, `&str` |
+| `$x:ident` | 식별자(identifier) | `foo`, `my_var` |
+| `$x:pat` | 패턴 | `Some(x)`, `_`, `(a, b)` |
+| `$x:stmt` | 문장(statement) | `let x = 5;` |
+| `$x:block` | 블록 | `{ println!("hi"); 42 }` |
+| `$x:literal` | 리터럴 | `42`, `"hello"`, `true` |
+| `$x:tt` | 단일 토큰 트리 | 무엇이든 가능 — 와일드카드 역할 |
+| `$x:item` | 아이템 (fn, struct, impl 등) | `fn foo() {}` |
 
-### Repetition — the killer feature
+### 반복(Repetition) — 강력한 핵심 기능
 
-C/C++ macros can't loop. Rust macros can repeat patterns:
+C/C++ 매크로는 루프를 돌 수 없지만, Rust 매크로는 패턴을 반복할 수 있습니다.
 
 ```rust
 macro_rules! make_vec {
-    // Match zero or more comma-separated expressions
+    // 쉼표로 구분된 0개 이상의 식에 매칭
     ( $( $element:expr ),* ) => {
         {
             let mut v = Vec::new();
-            $( v.push($element); )*  // Repeat for each matched element
+            $( v.push($element); )*  // 매칭된 각 요소에 대해 반복
             v
         }
     };
@@ -100,9 +98,9 @@ fn main() {
 }
 ```
 
-The `$( ... ),*` syntax means "match zero or more of this pattern, separated by commas." The `$( ... )*` in the expansion repeats the body once for each match.
+`$( ... ),*` 문법은 "쉼표로 구분된 이 패턴이 0개 이상 일치함"을 의미합니다. 확장부의 `$( ... )*`는 일치하는 항목마다 본문을 한 번씩 반복합니다.
 
-> **This is exactly how `vec![]` is implemented in the standard library.** The actual source is:
+> **이것이 표준 라이브러리의 `vec![]`가 구현된 방식과 정확히 일치합니다.** 실제 소스 코드는 다음과 같습니다:
 > ```rust
 > macro_rules! vec {
 >     () => { Vec::new() };
@@ -110,19 +108,19 @@ The `$( ... ),*` syntax means "match zero or more of this pattern, separated by 
 >     ($($x:expr),+ $(,)?) => { <[_]>::into_vec(Box::new([$($x),+])) };
 > }
 > ```
-> The `$(,)?` at the end allows an optional trailing comma.
+> 마지막의 `$(,)?`는 선택적인 끝 쉼표(trailing comma)를 허용합니다.
 
-#### Repetition operators
+#### 반복 연산자
 
-| Operator | Meaning | Example |
+| 연산자 | 의미 | 예시 |
 |----------|---------|---------|
-| `$( ... )*` | Zero or more | `vec![]`, `vec![1]`, `vec![1, 2, 3]` |
-| `$( ... )+` | One or more | At least one element required |
-| `$( ... )?` | Zero or one | Optional element |
+| `$( ... )*` | 0개 이상 | `vec![]`, `vec![1]`, `vec![1, 2, 3]` |
+| `$( ... )+` | 1개 이상 | 최소 하나의 요소가 필요함 |
+| `$( ... )?` | 0개 또는 1개 | 선택적 요소 |
 
-### Practical example: a `hashmap!` constructor
+### 실무 예시: `hashmap!` 생성자
 
-The standard library has `vec![]` but no `hashmap!{}`. Let's build one:
+표준 라이브러리에는 `vec![]`는 있지만 `hashmap!{}`은 없습니다. 직접 만들어 봅시다.
 
 ```rust
 macro_rules! hashmap {
@@ -139,22 +137,22 @@ fn main() {
     let scores = hashmap! {
         "Alice" => 95,
         "Bob" => 87,
-        "Carol" => 92,  // trailing comma OK thanks to $(,)?
+        "Carol" => 92,  // $(,)? 덕분에 끝 쉼표 허용
     };
     println!("{scores:?}");
 }
 ```
 
-### Practical example: diagnostic check macro
+### 실제 예시: 진단 체크 매크로
 
-A pattern common in embedded/diagnostic code — check a condition and return an error:
+임베디드나 진단 코드에서 흔히 쓰이는 패턴 — 조건을 확인하고 에러를 반환합니다.
 
 ```rust
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 enum DiagError {
-    #[error("Check failed: {0}")]
+    #[error("체크 실패: {0}")]
     CheckFailed(String),
 }
 
@@ -167,122 +165,122 @@ macro_rules! diag_check {
 }
 
 fn run_diagnostics(temp: f64, voltage: f64) -> Result<(), DiagError> {
-    diag_check!(temp < 85.0, "GPU too hot");
-    diag_check!(voltage > 0.8, "Rail voltage too low");
-    diag_check!(voltage < 1.5, "Rail voltage too high");
-    println!("All checks passed");
+    diag_check!(temp < 85.0, "GPU 과열");
+    diag_check!(voltage > 0.8, "레일 전압 낮음");
+    diag_check!(voltage < 1.5, "레일 전압 높음");
+    println!("모든 체크 통과");
     Ok(())
 }
 ```
 
-> **C/C++ comparison:**
+> **C/C++ 비교:**
 > ```c
-> // C preprocessor — textual substitution, no type safety, no hygiene
+> // C 전처리기 — 단순 텍스트 치환, 타입 안전성 없음, 위생적이지 않음
 > #define DIAG_CHECK(cond, msg) \
 >     do { if (!(cond)) { log_error(msg); return -1; } } while(0)
 > ```
-> The Rust version returns a proper `Result` type, has no double-evaluation risk, and the compiler checks that `$cond` is actually a `bool` expression.
+> Rust 버전은 적절한 `Result` 타입을 반환하며, 이중 평가 위험이 없고, 컴파일러가 `$cond`가 실제로 `bool` 식인지 검사합니다.
 
-### Hygiene: why Rust macros are safe
+### 위생(Hygiene): Rust 매크로가 안전한 이유
 
-C/C++ macro bugs often come from name collisions:
+C/C++ 매크로 버그는 대개 이름 충돌에서 발생합니다.
 
 ```c
-// C: dangerous — `x` could shadow the caller's `x`
+// C: 위험함 — `x`가 호출자의 `x`를 가릴 수 있음
 #define SQUARE(x) ((x) * (x))
 int x = 5;
-int result = SQUARE(x++);  // UB: x incremented twice!
+int result = SQUARE(x++);  // 미정의 동작: x가 두 번 증가함!
 ```
 
-Rust macros are **hygienic** — variables created inside a macro don't leak out:
+Rust 매크로는 **위생적(hygienic)**입니다. 매크로 내부에서 생성된 변수는 밖으로 새어 나가지 않습니다.
 
 ```rust
 macro_rules! make_x {
     () => {
-        let x = 42;  // This `x` is scoped to the macro expansion
+        let x = 42;  // 이 `x`는 매크로 확장 스코프 내로 제한됨
     };
 }
 
 fn main() {
     let x = 10;
     make_x!();
-    println!("{x}");  // Prints 10, not 42 — hygiene prevents collision
+    println!("{x}");  // 42가 아닌 10 출력 — 위생 덕분에 충돌 방지
 }
 ```
 
-The macro's `x` and the caller's `x` are treated as different variables by the compiler, even though they have the same name. **This is impossible with the C preprocessor.**
+매크로의 `x`와 호출자의 `x`는 이름이 같더라도 컴파일러에 의해 서로 다른 변수로 취급됩니다. **이는 C 전처리기에서는 불가능한 일입니다.**
 
 ---
 
-## Common Standard Library Macros
+## 자주 쓰이는 표준 라이브러리 매크로
 
-You've been using these since chapter 1 — here's what they actually do:
+1장에서부터 사용해 온 매크로들입니다. 실제로 어떤 일을 하는지 살펴봅시다.
 
-| Macro | What it does | Expands to (simplified) |
+| 매크로 | 역할 | 확장 결과 (간략화) |
 |-------|-------------|------------------------|
-| `println!("{}", x)` | Format and print to stdout + newline | `std::io::_print(format_args!(...))` |
-| `eprintln!("{}", x)` | Print to stderr + newline | Same but to stderr |
-| `format!("{}", x)` | Format into a `String` | Allocates and returns a `String` |
-| `vec![1, 2, 3]` | Create a `Vec` with elements | `Vec::from([1, 2, 3])` (approximately) |
-| `todo!()` | Mark unfinished code | `panic!("not yet implemented")` |
-| `unimplemented!()` | Mark deliberately unimplemented code | `panic!("not implemented")` |
-| `unreachable!()` | Mark code the compiler can't prove unreachable | `panic!("unreachable")` |
-| `assert!(cond)` | Panic if condition is false | `if !cond { panic!(...) }` |
-| `assert_eq!(a, b)` | Panic if values aren't equal | Shows both values on failure |
-| `dbg!(expr)` | Print expression + value to stderr, return value | `eprintln!("[file:line] expr = {:#?}", &expr); expr` |
-| `include_str!("file.txt")` | Embed file contents as `&str` at compile time | Reads file during compilation |
-| `include_bytes!("data.bin")` | Embed file contents as `&[u8]` at compile time | Reads file during compilation |
-| `cfg!(condition)` | Compile-time condition as a `bool` | `true` or `false` based on target |
-| `env!("VAR")` | Read environment variable at compile time | Fails compilation if not set |
-| `concat!("a", "b")` | Concatenate literals at compile time | `"ab"` |
+| `println!("{}", x)` | 표준 출력에 포맷팅하여 출력 + 줄바꿈 | `std::io::_print(format_args!(...))` |
+| `eprintln!("{}", x)` | 표준 에러에 출력 + 줄바꿈 | 위와 같으나 stderr 사용 |
+| `format!("{}", x)` | `String`으로 포맷팅 | `String`을 할당하고 반환 |
+| `vec![1, 2, 3]` | 요소를 포함한 `Vec` 생성 | 대략 `Vec::from([1, 2, 3])` |
+| `todo!()` | 미구현 코드 표시 | `panic!("not yet implemented")` |
+| `unimplemented!()` | 의도적인 미구현 코드 표시 | `panic!("not implemented")` |
+| `unreachable!()` | 도달 불가능함을 표시 | `panic!("unreachable")` |
+| `assert!(cond)` | 조건이 거짓이면 패닉 | `if !cond { panic!(...) }` |
+| `assert_eq!(a, b)` | 두 값이 다르면 패닉 | 실패 시 두 값을 모두 보여줌 |
+| `dbg!(expr)` | 식과 값을 stderr에 출력하고 값 반환 | `eprintln!("[파일:라인] 식 = {:#?}", &식); 식` |
+| `include_str!("file.txt")` | 컴파일 타임에 파일 내용을 `&str`로 포함 | 컴파일 중 파일 읽기 수행 |
+| `include_bytes!("data.bin")` | 컴파일 타임에 파일 내용을 `&[u8]`로 포함 | 컴파일 중 파일 읽기 수행 |
+| `cfg!(condition)` | 컴파일 타임 조건을 `bool`로 반환 | 타겟에 따라 `true` 또는 `false` |
+| `env!("VAR")` | 컴파일 타임에 환경 변수 읽기 | 설정되지 않은 경우 컴파일 실패 |
+| `concat!("a", "b")` | 컴파일 타임에 리터럴 결합 | `"ab"` |
 
-### `dbg!` — the debugging macro you'll use daily
+### `dbg!` — 매일 사용하게 될 디버깅 매크로
 
 ```rust
 fn factorial(n: u32) -> u32 {
-    if dbg!(n <= 1) {     // Prints: [src/main.rs:2] n <= 1 = false
-        dbg!(1)           // Prints: [src/main.rs:3] 1 = 1
+    if dbg!(n <= 1) {     // 출력: [src/main.rs:2] n <= 1 = false
+        dbg!(1)           // 출력: [src/main.rs:3] 1 = 1
     } else {
-        dbg!(n * factorial(n - 1))  // Prints intermediate values
+        dbg!(n * factorial(n - 1))  // 중간 값들을 출력함
     }
 }
 
 fn main() {
-    dbg!(factorial(4));   // Prints all recursive calls with file:line
+    dbg!(factorial(4));   // 파일:라인 정보와 함께 모든 재귀 호출을 출력함
 }
 ```
 
-`dbg!` returns the value it wraps, so you can insert it anywhere without changing program behavior. It prints to stderr (not stdout), so it doesn't interfere with program output. **Remove all `dbg!` calls before committing code.**
+`dbg!`는 감싸고 있는 값을 반환하므로, 프로그램 동작을 바꾸지 않고 어디든 삽입할 수 있습니다. 표준 출력이 아닌 표준 에러(stderr)에 출력되므로 프로그램의 실제 출력과 섞이지 않습니다. **코드를 커밋하기 전에는 모든 `dbg!` 호출을 제거하십시오.**
 
-### Format string syntax
+### 포맷 문자열 문법
 
-Since `println!`, `format!`, `eprintln!`, and `write!` all use the same format machinery, here's the quick reference:
+`println!`, `format!`, `eprintln!`, `write!` 등은 모두 동일한 포맷 메커니즘을 사용합니다. 빠른 참조 가이드를 확인하십시오.
 
 ```rust
 let name = "sensor";
 let value = 3.14159;
 let count = 42;
 
-println!("{name}");                    // Variable by name (Rust 1.58+)
-println!("{}", name);                  // Positional
-println!("{value:.2}");                // 2 decimal places: "3.14"
-println!("{count:>10}");               // Right-aligned, width 10: "        42"
-println!("{count:0>10}");              // Zero-padded: "0000000042"
-println!("{count:#06x}");              // Hex with prefix: "0x002a"
-println!("{count:#010b}");             // Binary with prefix: "0b00101010"
-println!("{value:?}");                 // Debug format
-println!("{value:#?}");                // Pretty-printed Debug format
+println!("{name}");                    // 이름으로 변수 지정 (Rust 1.58+)
+println!("{}", name);                  // 순서대로 지정
+println!("{value:.2}");                // 소수점 2자리: "3.14"
+println!("{count:>10}");               // 우측 정렬, 너비 10: "        42"
+println!("{count:0>10}");              // 0으로 채우기: "0000000042"
+println!("{count:#06x}");              // 접두사 포함 16진수: "0x002a"
+println!("{count:#010b}");             // 접두사 포함 2진수: "0b00101010"
+println!("{value:?}");                 // Debug 포맷
+println!("{value:#?}");                // 보기 좋게 출력된(Pretty-printed) Debug 포맷
 ```
 
-> **For C developers:** Think of this as a type-safe `printf` — the compiler checks that `{:.2}` is applied to a float, not a string. No `%s`/`%d` format mismatch bugs.
+> **C 개발자:** 이것을 타입 안전한 `printf`라고 생각하십시오. 컴파일러는 `{:.2}`가 문자열이 아닌 부동 소수점에 적용되었는지 확인합니다. `%s`/`%d` 포맷 불일치 버그가 발생하지 않습니다.
 >
-> **For C++ developers:** This replaces `std::cout << std::fixed << std::setprecision(2) << value` with a single readable format string.
+> **C++ 개발자:** 이것은 `std::cout << std::fixed << std::setprecision(2) << value`를 하나의 읽기 쉬운 포맷 문자열로 대체합니다.
 
 ---
 
-## Derive Macros
+## Derive 매크로
 
-You've seen `#[derive(...)]` on nearly every struct in this book:
+이 책의 거의 모든 구조체에서 `#[derive(...)]`를 보셨을 것입니다.
 
 ```rust
 #[derive(Debug, Clone, PartialEq)]
@@ -292,10 +290,10 @@ struct Point {
 }
 ```
 
-`#[derive(Debug)]` is a **derive macro** — a special kind of procedural macro that generates trait implementations automatically. Here's what it produces (simplified):
+`#[derive(Debug)]`는 **derive 매크로**로, 트레이트 구현을 자동으로 생성하는 특별한 종류의 절차적 매크로입니다. 다음은 이것이 생성하는 코드의 간략한 모습입니다.
 
 ```rust
-// What #[derive(Debug)] generates for Point:
+// Point에 대해 #[derive(Debug)]가 생성하는 코드:
 impl std::fmt::Debug for Point {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Point")
@@ -306,152 +304,152 @@ impl std::fmt::Debug for Point {
 }
 ```
 
-Without `#[derive(Debug)]`, you'd have to write that `impl` block by hand for every struct.
+`#[derive(Debug)]`가 없다면 모든 구조체마다 저런 `impl` 블록을 직접 작성해야 했을 것입니다.
 
-### Commonly derived traits
+### 자주 쓰이는 derive 트레이트들
 
-| Derive | What it generates | When to use |
+| Derive | 생성되는 기능 | 사용 시점 |
 |--------|-------------------|-------------|
-| `Debug` | `{:?}` formatting | Almost always — enables printing for debugging |
-| `Clone` | `.clone()` method | When you need to duplicate values |
-| `Copy` | Implicit copy on assignment | Small, stack-only types (integers, `[f64; 3]`) |
-| `PartialEq` / `Eq` | `==` and `!=` operators | When you need equality comparison |
-| `PartialOrd` / `Ord` | `<`, `>`, `<=`, `>=` operators | When you need ordering |
-| `Hash` | Hashing for `HashMap`/`HashSet` keys | Types used as map keys |
-| `Default` | `Type::default()` constructor | Types with sensible zero/empty values |
-| `serde::Serialize` / `Deserialize` | JSON/TOML/etc. serialization | Data types that cross API boundaries |
+| `Debug` | `{:?}` 포맷팅 | 거의 항상 — 디버깅을 위한 출력 기능 제공 |
+| `Clone` | `.clone()` 메서드 | 값을 복제해야 할 때 |
+| `Copy` | 대입 시 암시적 복사 | 정수, `[f64; 3]` 등 스택 전용 소형 타입 |
+| `PartialEq` / `Eq` | `==` 및 `!=` 연산자 | 동등 비교가 필요할 때 |
+| `PartialOrd` / `Ord` | `<`, `>`, `<=`, `>=` 연산자 | 순서 비교가 필요할 때 |
+| `Hash` | `HashMap`/`HashSet` 용 해싱 | 맵의 키로 사용될 타입 |
+| `Default` | `Type::default()` 생성자 | 합리적인 0 또는 빈 값이 있는 타입 |
+| `serde::Serialize` / `Deserialize` | JSON/TOML 등 직렬화 | API 경계를 넘나드는 데이터 타입 |
 
-### The derive decision tree
+### Derive 결정 트리
 
 ```text
-Should I derive it?
+derive를 써야 할까요?
   │
-  ├── Does my type contain only types that implement the trait?
-  │     ├── Yes → #[derive] will work
-  │     └── No  → Write a manual impl (or skip it)
+  ├── 내 타입이 해당 트레이트를 구현한 타입들만 포함하고 있는가?
+  │     ├── 예 → #[derive]가 작동함
+  │     └── 아니요 → 수동으로 구현하거나 생략하십시오.
   │
-  └── Will users of my type reasonably expect this behavior?
-        ├── Yes → Derive it (Debug, Clone, PartialEq are almost always reasonable)
-        └── No  → Don't derive (e.g., don't derive Copy for a type with a file handle)
+  └── 내 타입의 사용자가 이 동작을 기대하는 것이 합리적인가?
+        ├── 예 → derive 하십시오 (Debug, Clone, PartialEq는 거의 항상 합리적임)
+        └── 아니요 → 하지 마십시오 (예: 파일 핸들이 있는 타입에 Copy를 구현하지 마십시오)
 ```
 
-> **C++ comparison:** `#[derive(Clone)]` is like auto-generating a correct copy constructor. `#[derive(PartialEq)]` is like auto-generating `operator==` that compares each field — something C++20's `= default` spaceship operator finally provides.
+> **C++ 비교:** `#[derive(Clone)]`은 올바른 복사 생성자를 자동 생성하는 것과 같습니다. `#[derive(PartialEq)]`는 각 필드를 비교하는 `operator==`를 자동 생성하는 것과 같으며, 이는 C++20의 `= default` 우주선 연산자가 마침내 제공하게 된 기능입니다.
 
 ---
 
-## Attribute Macros
+## 속성 매크로 (Attribute Macros)
 
-Attribute macros transform the item they're attached to. You've already used several:
+속성 매크로는 연결된 항목을 변형합니다. 이미 여러 번 사용해 보셨을 것입니다.
 
 ```rust
-#[test]                    // Marks a function as a test
+#[test]                    // 함수를 테스트로 표시
 fn test_addition() {
     assert_eq!(2 + 2, 4);
 }
 
-#[cfg(target_os = "linux")] // Conditionally includes this function
+#[cfg(target_os = "linux")] // 리눅스에서만 이 함수를 포함
 fn linux_only() { /* ... */ }
 
-#[derive(Debug)]            // Generates Debug implementation
+#[derive(Debug)]            // Debug 구현 생성
 struct MyType { /* ... */ }
 
-#[allow(dead_code)]         // Suppresses a compiler warning
+#[allow(dead_code)]         // 컴파일러 경고 억제
 fn unused_helper() { /* ... */ }
 
-#[must_use]                 // Warn if return value is discarded
+#[must_use]                 // 반환값이 버려지면 경고 발생
 fn compute_checksum(data: &[u8]) -> u32 { /* ... */ }
 ```
 
-Common built-in attributes:
+자주 쓰이는 내장 속성:
 
-| Attribute | Purpose |
+| 속성 | 목적 |
 |-----------|---------|
-| `#[test]` | Mark as test function |
-| `#[cfg(...)]` | Conditional compilation |
-| `#[derive(...)]` | Auto-generate trait impls |
-| `#[allow(...)]` / `#[deny(...)]` / `#[warn(...)]` | Control lint levels |
-| `#[must_use]` | Warn on unused return values |
-| `#[inline]` / `#[inline(always)]` | Hint to inline the function |
-| `#[repr(C)]` | Use C-compatible memory layout (for FFI) |
-| `#[no_mangle]` | Don't mangle the symbol name (for FFI) |
-| `#[deprecated]` | Mark as deprecated with optional message |
+| `#[test]` | 테스트 함수로 표시 |
+| `#[cfg(...)]` | 조건부 컴파일 |
+| `#[derive(...)]` | 트레이트 구현 자동 생성 |
+| `#[allow(...)]` / `#[deny(...)]` / `#[warn(...)]` | 린트(lint) 레벨 제어 |
+| `#[must_use]` | 사용되지 않는 반환값에 대해 경고 |
+| `#[inline]` / `#[inline(always)]` | 인라인화 힌트 제공 |
+| `#[repr(C)]` | C 호환 메모리 레이아웃 사용 (FFI 용) |
+| `#[no_mangle]` | 심볼 이름을 바꾸지 않음 (FFI 용) |
+| `#[deprecated]` | 선택적 메시지와 함께 사용 중단 표시 |
 
-> **For C/C++ developers:** Attributes replace a mix of preprocessor directives (`#pragma`, `__attribute__((...))`), and compiler-specific extensions. They're part of the language grammar, not bolted-on extensions.
+> **C/C++ 개발자:** 속성은 전처리기 지시문(`#pragma`, `__attribute__((...))`)과 컴파일러별 확장을 하나로 합친 형태입니다. 덧붙여진 확장이 아니라 언어 문법의 정식 일부입니다.
 
 ---
 
-## Procedural Macros (Conceptual Overview)
+## 절차적 매크로 (Procedural Macros) 개념 개요
 
-Procedural macros ("proc macros") are macros written as *separate Rust programs* that run at compile time and generate code. They're more powerful than `macro_rules!` but also more complex.
+절차적 매크로("proc macros")는 컴파일 타임에 실행되어 코드를 생성하는 *별도의 Rust 프로그램*으로 작성된 매크로입니다. `macro_rules!`보다 강력하지만 더 복잡합니다.
 
-There are three kinds:
+세 가지 종류가 있습니다.
 
-| Kind | Syntax | Example | What it does |
+| 종류 | 문법 | 예시 | 역할 |
 |------|--------|---------|-------------|
-| **Function-like** | `my_macro!(...)` | `sql!(SELECT * FROM users)` | Parses custom syntax, generates Rust code |
-| **Derive** | `#[derive(MyTrait)]` | `#[derive(Serialize)]` | Generates trait impl from struct definition |
-| **Attribute** | `#[my_attr]` | `#[tokio::main]`, `#[instrument]` | Transforms the annotated item |
+| **함수형 (Function-like)** | `my_macro!(...)` | `sql!(SELECT * FROM users)` | 커스텀 구문을 파싱하여 Rust 코드 생성 |
+| **Derive** | `#[derive(MyTrait)]` | `#[derive(Serialize)]` | 구조체 정의로부터 트레이트 구현 생성 |
+| **속성 (Attribute)** | `#[my_attr]` | `#[tokio::main]`, `#[instrument]` | 주석이 달린 항목을 변형함 |
 
-### You've already used proc macros
+### 이미 절차적 매크로를 사용해 보셨습니다
 
-- `#[derive(Error)]` from `thiserror` — generates `Display` and `From` impls for error enums
-- `#[derive(Serialize, Deserialize)]` from `serde` — generates serialization code
-- `#[tokio::main]` — transforms `async fn main()` into a runtime setup + block_on
-- `#[test]` — registered by the test harness (built-in proc macro)
+- `thiserror`의 `#[derive(Error)]` — 에러 열거형에 대해 `Display` 및 `From` 구현 생성
+- `serde`의 `#[derive(Serialize, Deserialize)]` — 직렬화 코드 생성
+- `#[tokio::main]` — `async fn main()`을 런타임 설정과 `block_on`으로 변환
+- `#[test]` — 테스트 하네스에 의해 등록됨 (내장 절차적 매크로)
 
-### When to write your own proc macro
+### 직접 절차적 매크로를 작성해야 할 때
 
-You likely won't need to write proc macros during this course. They're useful when:
-- You need to inspect struct fields/enum variants at compile time (derive macros)
-- You're building a domain-specific language (function-like macros)
-- You need to transform function signatures (attribute macros)
+이 과정 중에 직접 작성할 일은 거의 없을 것입니다. 다음의 경우에 유용합니다.
+- 컴파일 타임에 구조체 필드나 열거형 변형을 검사해야 할 때 (derive 매크로)
+- 도메인 특화 언어(DSL)를 구축할 때 (함수형 매크로)
+- 함수 시그니처를 변형해야 할 때 (속성 매크로)
 
-For most code, `macro_rules!` or plain functions are sufficient.
+대부분의 코드에서는 `macro_rules!`나 일반 함수로 충분합니다.
 
-> **C++ comparison:** Procedural macros fill the role that code generators, template metaprogramming, and external tools like `protoc` fill in C++. The difference is that proc macros are part of the cargo build pipeline — no external build steps, no CMake custom commands.
+> **C++ 비교:** 절차적 매크로는 C++에서 코드 생성기, 템플릿 메타프로그래밍, `protoc` 같은 외부 도구가 하던 역할을 수행합니다. 차이점은 절차적 매크로가 cargo 빌드 파이프라인의 일부라는 것입니다 — 외부 빌드 단계나 CMake 커스텀 명령이 필요 없습니다.
 
 ---
 
-## When to Use What: Macros vs Functions vs Generics
+## 무엇을 사용할 것인가: 매크로 대 함수 대 제네릭
 
 ```text
-Need to generate code?
+코드를 생성해야 합니까?
   │
-  ├── No → Use a function or generic function
-  │         (simpler, better error messages, IDE support)
+  ├── 아니요 → 함수나 제네릭 함수를 사용하십시오.
+  │         (더 단순하고, 에러 메시지가 좋으며, IDE 지원이 원활함)
   │
-  └── Yes ─┬── Variable number of arguments?
-            │     └── Yes → macro_rules! (e.g., println!, vec!)
+  └── 예 ─┬── 가변 인자가 필요합니까?
+            │     └── 예 → macro_rules! (예: println!, vec!)
             │
-            ├── Repetitive impl blocks for many types?
-            │     └── Yes → macro_rules! with repetition
+            ├── 많은 타입에 대해 반복적인 impl 블록이 필요합니까?
+            │     └── 예 → 반복 기능이 있는 macro_rules!
             │
-            ├── Need to inspect struct fields?
-            │     └── Yes → Derive macro (proc macro)
+            ├── 구조체 필드를 검사해야 합니까?
+            │     └── 예 → Derive 매크로 (절차적 매크로)
             │
-            ├── Need custom syntax (DSL)?
-            │     └── Yes → Function-like proc macro
+            ├── 커스텀 구문(DSL)이 필요합니까?
+            │     └── 예 → 함수형 절차적 매크로
             │
-            └── Need to transform a function/struct?
-                  └── Yes → Attribute proc macro
+            └── 함수나 구조체를 변형해야 합니까?
+                  └── 예 → 속성 절차적 매크로
 ```
 
-**General guideline:** If a function or generic can do it, don't use a macro. Macros have worse error messages, no IDE auto-complete inside the macro body, and are harder to debug.
+**일반 가이드라인:** 함수나 제네릭으로 할 수 있다면 매크로를 쓰지 마십시오. 매크로는 에러 메시지가 더 나쁘고, 매크로 본문 내부에서 IDE 자동 완성이 되지 않으며, 디버깅이 더 어렵습니다.
 
 ---
 
-## Exercises
+## 연습 문제
 
-### 🟢 Exercise 1: `min!` macro
+### 🟢 연습 문제 1: `min!` 매크로
 
-Write a `min!` macro that:
-- `min!(a, b)` returns the smaller of two values
-- `min!(a, b, c)` returns the smallest of three values
-- Works with any type that implements `PartialOrd`
+다음을 수행하는 `min!` 매크로를 작성하십시오.
+- `min!(a, b)`는 두 값 중 작은 값을 반환합니다.
+- `min!(a, b, c)`는 세 값 중 가장 작은 값을 반환합니다.
+- `PartialOrd`를 구현한 모든 타입에서 작동해야 합니다.
 
-**Hint:** You'll need two match arms in your `macro_rules!`.
+**힌트:** `macro_rules!`에 두 개의 매칭 암(arm)이 필요합니다.
 
-<details><summary>Solution (click to expand)</summary>
+<details><summary>해설 (클릭하여 확장)</summary>
 
 ```rust
 macro_rules! min {
@@ -470,18 +468,18 @@ fn main() {
 }
 ```
 
-**Note:** For production code, prefer `std::cmp::min` or `a.min(b)`. This exercise demonstrates the mechanics of multi-arm macros.
+**참고:** 실제 운영 코드에서는 `std::cmp::min`이나 `a.min(b)`를 선호하십시오. 이 연습 문제는 여러 개의 암을 가진 매크로의 메커니즘을 보여주기 위한 것입니다.
 
 </details>
 
-### 🟡 Exercise 2: `hashmap!` from scratch
+### 🟡 연습 문제 2: 바닥부터 만드는 `hashmap!`
 
-Without looking at the example above, write a `hashmap!` macro that:
-- Creates a `HashMap` from `key => value` pairs
-- Supports trailing commas
-- Works with any hashable key type
+위의 예제를 보지 않고 다음을 수행하는 `hashmap!` 매크로를 작성하십시오.
+- `key => value` 쌍으로부터 `HashMap`을 생성합니다.
+- 끝 쉼표를 지원합니다.
+- 해시 가능한 모든 키 타입에 대해 작동합니다.
 
-Test with:
+다음 코드로 테스트하십시오:
 ```rust
 let m = hashmap! {
     "name" => "Alice",
@@ -491,7 +489,7 @@ assert_eq!(m["name"], "Alice");
 assert_eq!(m.len(), 2);
 ```
 
-<details><summary>Solution (click to expand)</summary>
+<details><summary>해설 (클릭하여 확장)</summary>
 
 ```rust
 use std::collections::HashMap;
@@ -511,24 +509,24 @@ fn main() {
     };
     assert_eq!(m["name"], "Alice");
     assert_eq!(m.len(), 2);
-    println!("Tests passed!");
+    println!("테스트 통과!");
 }
 ```
 
 </details>
 
-### 🟡 Exercise 3: `assert_approx_eq!` for floating-point comparison
+### 🟡 연습 문제 3: 부동 소수점 비교를 위한 `assert_approx_eq!`
 
-Write a macro `assert_approx_eq!(a, b, epsilon)` that panics if `|a - b| > epsilon`. This is useful for testing floating-point calculations where exact equality fails.
+`|a - b| > epsilon`인 경우 패닉을 일으키는 `assert_approx_eq!(a, b, epsilon)` 매크로를 작성하십시오. 이는 정확한 동등 비교가 실패하는 부동 소수점 계산을 테스트할 때 유용합니다.
 
-Test with:
+다음 코드로 테스트하십시오:
 ```rust
-assert_approx_eq!(0.1 + 0.2, 0.3, 1e-10);        // Should pass
-assert_approx_eq!(3.14159, std::f64::consts::PI, 1e-4); // Should pass
-// assert_approx_eq!(1.0, 2.0, 0.5);              // Should panic
+assert_approx_eq!(0.1 + 0.2, 0.3, 1e-10);        // 통과해야 함
+assert_approx_eq!(3.14159, std::f64::consts::PI, 1e-4); // 통과해야 함
+// assert_approx_eq!(1.0, 2.0, 0.5);              // 패닉 발생해야 함
 ```
 
-<details><summary>Solution (click to expand)</summary>
+<details><summary>해설 (클릭하여 확장)</summary>
 
 ```rust
 macro_rules! assert_approx_eq {
@@ -537,7 +535,7 @@ macro_rules! assert_approx_eq {
         let diff = (a - b).abs();
         if diff > eps {
             panic!(
-                "assertion failed: |{} - {}| = {} > {} (epsilon)",
+                "단언 실패: |{} - {}| = {} > {} (epsilon)",
                 a, b, diff, eps
             );
         }
@@ -547,15 +545,15 @@ macro_rules! assert_approx_eq {
 fn main() {
     assert_approx_eq!(0.1 + 0.2, 0.3, 1e-10);
     assert_approx_eq!(3.14159, std::f64::consts::PI, 1e-4);
-    println!("All float comparisons passed!");
+    println!("모든 실수 비교 통과!");
 }
 ```
 
 </details>
 
-### 🔴 Exercise 4: `impl_display_for_enum!`
+### 🔴 연습 문제 4: `impl_display_for_enum!`
 
-Write a macro that generates a `Display` implementation for simple C-like enums. Given:
+간단한 C 스타일 열거형에 대해 `Display` 구현을 생성하는 매크로를 작성하십시오. 다음과 같이 입력했을 때:
 
 ```rust
 impl_display_for_enum! {
@@ -567,11 +565,11 @@ impl_display_for_enum! {
 }
 ```
 
-It should generate both the `enum Color { Red, Green, Blue }` definition AND the `impl Display for Color` that maps each variant to its string.
+`enum Color { Red, Green, Blue }` 정의와 각 변형을 문자열에 매핑하는 `impl Display for Color`를 모두 생성해야 합니다.
 
-**Hint:** You'll need both `$( ... ),*` repetition and multiple fragment specifiers.
+**힌트:** `$( ... ),*` 반복 기능과 여러 개의 조각 지정자가 모두 필요합니다.
 
-<details><summary>Solution (click to expand)</summary>
+<details><summary>해설 (클릭하여 확장)</summary>
 
 ```rust
 use std::fmt;
@@ -603,10 +601,10 @@ impl_display_for_enum! {
 
 fn main() {
     let c = Color::Green;
-    println!("Color: {c}");          // "Color: green"
-    println!("Debug: {c:?}");        // "Debug: Green"
+    println!("색상: {c}");          // "색상: green"
+    println!("디버그: {c:?}");        // "디버그: Green"
     assert_eq!(format!("{}", Color::Red), "red");
-    println!("All tests passed!");
+    println!("모든 테스트 통과!");
 }
 ```
 

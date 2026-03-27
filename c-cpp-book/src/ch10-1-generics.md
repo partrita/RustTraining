@@ -1,12 +1,12 @@
-# Rust generics
+# Rust 제네릭(Generics)
 
-> **What you'll learn:** Generic type parameters, monomorphization (zero-cost generics), trait bounds, and how Rust generics compare to C++ templates — with better error messages and no SFINAE.
+> **학습 내용:** 제네릭 타입 매개변수, 단형성화(monomorphization, 제로 코스트 제네릭), 트레이트 경계(trait bounds)를 배웁니다. 또한 Rust 제네릭이 C++ 템플릿과 비교했을 때 더 나은 에러 메시지를 제공하고 SFINAE가 없는 등의 장점을 알아봅니다.
 
-- Generics allow the same algorithm or data structure to be reused across data types
-    - The generic parameter appears as an identifier within ```<>```, e.g.: ```<T>```. The parameter can have any legal identifier name, but is typically kept short for brevity
-    - The compiler performs monomorphization at compile time, i.e., it generates a new type for every variation of ```T``` that is encountered
+- 제네릭을 사용하면 동일한 알고리즘이나 데이터 구조를 여러 데이터 타입에 걸쳐 재사용할 수 있습니다.
+    - 제네릭 매개변수는 ```<>``` 안의 식별자로 나타납니다. 예: ```<T>```. 매개변수는 임의의 유효한 식별자 이름을 가질 수 있지만, 간결함을 위해 보통 짧게 유지합니다.
+    - 컴파일러는 컴파일 타임에 단형성화를 수행합니다. 즉, 발견되는 ```T```의 모든 변형에 대해 새로운 타입을 생성합니다.
 ```rust
-// Returns a tuple of type <T> composed of left and right of type <T>
+// <T> 타입의 left와 right로 구성된 <T> 타입의 튜플을 반환합니다.
 fn pick<T>(x: u32, left: T, right: T) -> (T, T) {
    if x == 42 {
     (left, right) 
@@ -21,10 +21,10 @@ fn main() {
 }
 ```
 
-# Rust generics
-- Generics can also be applied to data types and associated methods. It is possible to specialize the implementation for a specific ```<T>``` (example: ```f32``` vs. ```u32```)
+# Rust 제네릭
+- 제네릭은 데이터 타입과 연관 메서드에도 적용될 수 있습니다. 특정 ```<T>```(예: ```f32``` vs. ```u32```)에 대해 구현을 특수화(specialize)하는 것도 가능합니다.
 ```rust
-#[derive(Debug)] // We will discuss this later
+#[derive(Debug)] // 이에 대해서는 나중에 설명합니다.
 struct Point<T> {
     x : T,
     y : T,
@@ -54,12 +54,12 @@ fn main() {
 }
 ```
 
-# Exercise: Generics
+# 연습 문제: 제네릭
 
-🟢 **Starter**
-- Modify the ```Point``` type to use two different types (```T``` and ```U```) for x and y
+🟢 **초급**
+- ```Point``` 타입을 수정하여 x와 y에 서로 다른 두 가지 타입(```T```와 ```U```)을 사용하도록 만드세요.
 
-<details><summary>Solution (click to expand)</summary>
+<details><summary>풀이 (클릭하여 확장)</summary>
 
 ```rust
 #[derive(Debug)]
@@ -82,7 +82,7 @@ fn main() {
     println!("{p2:?}");
     println!("{p3:?}");
 }
-// Output:
+// 출력:
 // Point { x: 42, y: 3.14 }
 // Point { x: "hello", y: true }
 // Point { x: 1, y: 1000 }
@@ -90,9 +90,9 @@ fn main() {
 
 </details>
 
-### Combining Rust traits and generics
-- Traits can be used to place restrictions on generic types (constraints)
-- The constraint can be specified using a ```:``` after the generic type parameter, or using ```where```. The following defines a generic function ```get_area``` that takes any type ```T``` as long as it implements the ```ComputeArea``` ```trait```
+### Rust 트레이트와 제네릭의 결합
+- 트레이트를 사용하여 제네릭 타입에 제약 조건(constraints)을 걸 수 있습니다.
+- 제약 조건은 제네릭 타입 매개변수 뒤에 ```:```를 사용하거나 ```where``` 절을 사용하여 지정할 수 있습니다. 다음은 ```ComputeArea``` ```트레이트```를 구현한 모든 타입 ```T```를 인자로 받는 제네릭 함수 ```get_area```를 정의합니다.
 ```rust
     trait ComputeArea {
         fn area(&self) -> u64;
@@ -101,10 +101,10 @@ fn main() {
         t.area()
     }
 ```
-- [▶ Try it in the Rust Playground](https://play.rust-lang.org/)
+- [▶ Rust Playground에서 시도해 보기](https://play.rust-lang.org/)
 
-### Combining Rust traits and generics
-- It is possible to have multiple trait constraints
+### Rust 트레이트와 제네릭의 결합
+- 여러 개의 트레이트 제약 조건을 가질 수도 있습니다.
 ```rust
 trait Fish {}
 trait Mammal {}
@@ -118,14 +118,14 @@ fn main() {
     let w = Whale {};
     only_fish_and_mammals(&w);
     let _s = Shark {};
-    // Won't compile
+    // 컴파일되지 않음
     only_fish_and_mammals(&_s);
 }
 ```
 
-### Rust traits constraints in data types
-- Trait constraints can be combined with generics in data types
-- In the following example, we define the ```PrintDescription``` ```trait``` and a generic ```struct``` ```Shape``` with a member constrained by the trait
+### 데이터 타입에서의 Rust 트레이트 제약
+- 데이터 타입에서도 트레이트 제약 조건을 제네릭과 결합할 수 있습니다.
+- 다음 예제에서는 ```PrintDescription``` ```트레이트```와, 해당 트레이트에 의해 제약되는 멤버를 가진 제네릭 ```구조체``` ```Shape```를 정의합니다.
 ```rust
 trait PrintDescription {
     fn print_description(&self);
@@ -133,19 +133,19 @@ trait PrintDescription {
 struct Shape<S: PrintDescription> {
     shape: S,
 }
-// Generic Shape implementation for any type that implements PrintDescription
+// PrintDescription을 구현하는 모든 타입에 대한 제네릭 Shape 구현
 impl<S: PrintDescription> Shape<S> {
     fn print(&self) {
         self.shape.print_description();
     }
 }
 ```
-- [▶ Try it in the Rust Playground](https://play.rust-lang.org/)
+- [▶ Rust Playground에서 시도해 보기](https://play.rust-lang.org/)
 
-# Exercise: Trait constraints and generics
+# 연습 문제: 트레이트 제약 및 제네릭
 
-🟡 **Intermediate**
-- Implement a ```struct``` with a generic member ```cipher``` that implements ```CipherText```
+🟡 **중급**
+- ```CipherText```를 구현하는 제네릭 멤버 ```cipher```를 가진 ```구조체```를 구현하세요.
 ```rust
 trait CipherText {
     fn encrypt(&self);
@@ -154,14 +154,14 @@ trait CipherText {
 //struct Cipher<>
 
 ```
-- Next, implement a method called ```encrypt``` on the ```struct``` ```impl``` that invokes ```encrypt``` on ```cipher```
+- 다음으로, ```cipher```의 ```encrypt```를 호출하는 ```encrypt``` 메서드를 해당 ```구조체```의 ```impl```에 구현하세요.
 ```rust
 // TO DO
 impl for Cipher<> {}
 ```
-- Next, implement ```CipherText``` on two structs called ```CipherOne``` and ```CipherTwo``` (just ```println()``` is fine). Create ```CipherOne``` and ```CipherTwo```, and use ```Cipher``` to invoke them
+- 다음으로, ```CipherOne```과 ```CipherTwo```라는 두 구조체에 ```CipherText```를 구현하세요 (단순히 ```println()```만 해도 됩니다). ```CipherOne```과 ```CipherTwo```를 생성하고, ```Cipher```를 사용하여 호출해 보세요.
 
-<details><summary>Solution (click to expand)</summary>
+<details><summary>풀이 (클릭하여 확장)</summary>
 
 ```rust
 trait CipherText {
@@ -183,13 +183,13 @@ struct CipherTwo;
 
 impl CipherText for CipherOne {
     fn encrypt(&self) {
-        println!("CipherOne encryption applied");
+        println!("CipherOne 암호화가 적용되었습니다.");
     }
 }
 
 impl CipherText for CipherTwo {
     fn encrypt(&self) {
-        println!("CipherTwo encryption applied");
+        println!("CipherTwo 암호화가 적용되었습니다.");
     }
 }
 
@@ -199,31 +199,31 @@ fn main() {
     c1.encrypt();
     c2.encrypt();
 }
-// Output:
-// CipherOne encryption applied
-// CipherTwo encryption applied
+// 출력:
+// CipherOne 암호화가 적용되었습니다.
+// CipherTwo 암호화가 적용되었습니다.
 ```
 
 </details>
 
-### Rust type state pattern and generics
-- Rust types can be used to enforce state machine transitions at *compile* time
-    - Consider a ```Drone``` with say two states: ```Idle``` and ```Flying```. In the ```Idle``` state, the only permitted method is ```takeoff()```. In the ```Flying``` state, we permit ```land()```
+### Rust 타입 상태(Type state) 패턴 및 제네릭
+- Rust 타입을 사용하여 *컴파일 타임*에 상태 머신 전이를 강제할 수 있습니다.
+    - 예를 들어 ```Idle```(대기)과 ```Flying```(비행)이라는 두 상태를 가진 ```Drone```을 생각해 보세요. ```Idle``` 상태에서는 ```takeoff()``` 메서드만 허용되고, ```Flying``` 상태에서는 ```land()```만 허용하려고 합니다.
     
-- One approach is to model the state machine using something like the following
+- 한 가지 방법은 다음과 같이 상태 머신을 모델링하는 것입니다.
 ```rust
 enum DroneState {
     Idle,
     Flying
 }
-struct Drone {x: u64, y: u64, z: u64, state: DroneState}  // x, y, z are coordinates
+struct Drone {x: u64, y: u64, z: u64, state: DroneState}  // x, y, z는 좌표
 ```
-- This requires a lot of runtime checks to enforce the state machine semantics — [▶ try it](https://play.rust-lang.org/) to see why
+- 이 방식은 상태 머신 의미론을 강제하기 위해 많은 런타임 체크가 필요합니다 — 왜 그런지 [▶ 시도해 보세요](https://play.rust-lang.org/).
 
-### Rust type state pattern generics
-- Generics allows us to enforce the state machine at *compile time*. This requires using a special generic called ```PhantomData<T>```
-- The ```PhantomData<T>``` is a ```zero-sized``` marker data type. In this case, we use it to represent the ```Idle``` and ```Flying``` states, but it has ```zero``` runtime size
-- Notice that the ```takeoff``` and ```land``` methods take ```self``` as a parameter. This is referred to as ```consuming``` (contrast with ```&self``` which uses borrowing). Basically, once we call the ```takeoff()``` on ```Drone<Idle>```, we can only get back a ```Drone<Flying>``` and viceversa
+### Rust 타입 상태 패턴 제네릭
+- 제네릭을 사용하면 *컴파일 타임*에 상태 머신을 강제할 수 있습니다. 이를 위해 ```PhantomData<T>```라는 특별한 제네릭을 사용해야 합니다.
+- ```PhantomData<T>```는 ```제로 사이즈(zero-sized)``` 마커 데이터 타입입니다. 이 경우 ```Idle```과 ```Flying``` 상태를 나타내는 데 사용되지만, 런타임 크기는 ```0```입니다.
+- ```takeoff```와 ```land``` 메서드가 ```self```를 매개변수로 받는다는 점에 유의하세요. 이를 ```소비(consuming)```라고 합니다 (빌림을 사용하는 ```&self```와 대조적입니다). 기본적으로 ```Drone<Idle>```에 대해 ```takeoff()```를 호출하면 ```Drone<Flying>```만 반환받을 수 있고 그 반대도 마찬가지입니다.
 ```rust
 struct Drone<T> {x: u64, y: u64, z: u64, state: PhantomData<T> }
 impl Drone<Idle> {
@@ -233,19 +233,19 @@ impl Drone<Flying> {
     fn land(self) -> Drone<Idle> { ...}
 }
 ```
-    - [▶ Try it in the Rust Playground](https://play.rust-lang.org/)
+    - [▶ Rust Playground에서 시도해 보기](https://play.rust-lang.org/)
 
-### Rust type state pattern generics
-- Key takeaways:
-    - States can be represented using structs (zero-size)
-    - We can combine the state ```T``` with ```PhantomData<T>``` (zero-size)
-    - Implementing the methods for a particular stage of the state machine is now just a matter of ```impl State<T>```
-    - Use a method that consumes ```self``` to transition from one state to another
-    - This gives us ```zero cost``` abstractions. The compiler can enforce the state machine at compile time and it's impossible to call methods unless the state is right
+### Rust 타입 상태 패턴 제네릭
+- 핵심 요약:
+    - 상태를 구조체(제로 사이즈)로 표현할 수 있습니다.
+    - 상태 ```T```를 ```PhantomData<T>```(제로 사이즈)와 결합할 수 있습니다.
+    - 상태 머신의 특정 단계에 대한 메서드를 구현하는 것은 이제 ```impl State<T>```의 문제입니다.
+    - 한 상태에서 다른 상태로 전이하기 위해 ```self```를 소비하는 메서드를 사용합니다.
+    - 이는 우리에게 ```제로 코스트(zero cost)``` 추상화를 제공합니다. 컴파일러는 컴파일 타임에 상태 머신을 강제할 수 있으며, 상태가 올바르지 않으면 메서드를 호출하는 것이 불가능합니다.
 
-### Rust builder pattern
-- The consume ```self``` can be useful for builder patterns
-- Consider a GPIO configuration with several dozen pins. The pins can be configured to high or low (default is low)
+### Rust 빌더(Builder) 패턴
+- ```self```를 소비하는 방식은 빌더 패턴에도 유용할 수 있습니다.
+- 수십 개의 핀이 있는 GPIO 설정을 생각해 보세요. 핀은 high 또는 low로 설정될 수 있습니다 (기본값은 low).
 ```rust
 #[derive(default)]
 enum PinState {
@@ -260,6 +260,4 @@ struct GPIOConfig {
     ... 
 }
 ```
-- The builder pattern can be used to construct a GPIO configuration by chaining — [▶ Try it](https://play.rust-lang.org/)
-
-
+- 빌더 패턴을 사용하여 체이닝 방식으로 GPIO 설정을 구성할 수 있습니다 — [▶ 직접 시도해 보세요](https://play.rust-lang.org/).

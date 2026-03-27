@@ -1,11 +1,10 @@
-## Testing in Rust vs C#
+## Rust와 C#의 테스트 비교
 
-> **What you'll learn:** Built-in `#[test]` vs xUnit, parameterized tests with `rstest` (like `[Theory]`),
-> property testing with `proptest`, mocking with `mockall`, and async test patterns.
+> **학습 내용:** 내장된 `#[test]`와 xUnit 비교, `rstest`를 사용한 매개변수화된 테스트(`[Theory]`와 유사), `proptest`를 사용한 속성 기반 테스트(property testing), `mockall`을 사용한 모킹(mocking), 그리고 비동기 테스트 패턴.
 >
-> **Difficulty:** 🟡 Intermediate
+> **난이도:** 🟡 중급
 
-### Unit Tests
+### 단위 테스트 (Unit Tests)
 ```csharp
 // C# — xUnit
 using Xunit;
@@ -31,12 +30,12 @@ public class CalculatorTests
 ```
 
 ```rust
-// Rust — built-in testing, no external framework needed
+// Rust — 내장 테스트 기능 제공, 외부 프레임워크 불필요
 pub fn add(a: i32, b: i32) -> i32 { a + b }
 
-#[cfg(test)]  // Only compiled during `cargo test`
+#[cfg(test)]  // `cargo test` 실행 시에만 컴파일됨
 mod tests {
-    use super::*;  // Import from parent module
+    use super::*;  // 부모 모듈로부터 아이템 가져오기
 
     #[test]
     fn add_returns_sum() {
@@ -51,14 +50,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "overflow")]
     fn add_overflow_panics() {
-        let _ = add(i32::MAX, 1); // panics in debug mode
+        let _ = add(i32::MAX, 1); // 디버그 모드에서 패닉 발생
     }
 }
 ```
 
-### Parameterized Tests (like `[Theory]`)
+### 매개변수화된 테스트 (`[Theory]`와 유사)
 ```rust
-// Use the `rstest` crate for parameterized tests
+// 매개변수화된 테스트를 위해 `rstest` 크레이트를 사용합니다.
 use rstest::rstest;
 
 #[rstest]
@@ -69,41 +68,41 @@ fn test_add(#[case] a: i32, #[case] b: i32, #[case] expected: i32) {
     assert_eq!(add(a, b), expected);
 }
 
-// Fixtures — like test setup methods
+// Fixtures — 테스트 설정(setup) 메서드와 유사함
 #[rstest]
 fn test_with_fixture(#[values(1, 2, 3)] x: i32) {
     assert!(x > 0);
 }
 ```
 
-### Assertions Comparison
+### 단언문(Assertions) 비교
 
-| C# (xUnit) | Rust | Notes |
+| C# (xUnit) | Rust | 비고 |
 |-------------|------|-------|
-| `Assert.Equal(expected, actual)` | `assert_eq!(expected, actual)` | Prints diff on failure |
+| `Assert.Equal(expected, actual)` | `assert_eq!(expected, actual)` | 실패 시 차이점(diff) 출력 |
 | `Assert.NotEqual(a, b)` | `assert_ne!(a, b)` | |
 | `Assert.True(condition)` | `assert!(condition)` | |
 | `Assert.Contains("sub", str)` | `assert!(str.contains("sub"))` | |
-| `Assert.Throws<T>(() => ...)` | `#[should_panic]` | Or use `std::panic::catch_unwind` |
-| `Assert.Null(obj)` | `assert!(option.is_none())` | No nulls — use `Option` |
+| `Assert.Throws<T>(() => ...)` | `#[should_panic]` | 또는 `std::panic::catch_unwind` 사용 |
+| `Assert.Null(obj)` | `assert!(option.is_none())` | null 없음 — `Option` 사용 |
 
-### Test Organization
+### 테스트 조직화
 
 ```text
 my_crate/
 ├── src/
-│   ├── lib.rs          # Unit tests in #[cfg(test)] mod tests { }
-│   └── parser.rs       # Each module can have its own test module
-├── tests/              # Integration tests (each file is a separate crate)
-│   ├── parser_test.rs  # Tests the public API as an external consumer
+│   ├── lib.rs          # #[cfg(test)] mod tests { } 내부의 단위 테스트
+│   └── parser.rs       # 각 모듈은 자신만의 테스트 모듈을 가질 수 있음
+├── tests/              # 통합 테스트 (각 파일은 별도의 크레이트로 간주됨)
+│   ├── parser_test.rs  # 외부 소비자 입장에서 공개 API 테스트
 │   └── api_test.rs
-└── benches/            # Benchmarks (with criterion crate)
+└── benches/            # 벤치마크 (criterion 크레이트 사용)
     └── my_benchmark.rs
 ```
 
 ```rust
-// tests/parser_test.rs — integration test
-// Can only access PUBLIC API (like testing from outside the assembly)
+// tests/parser_test.rs — 통합 테스트
+// 공개 API(PUBLIC API)에만 접근 가능 (외부 어셈블리에서 테스트하는 것과 같음)
 use my_crate::parser;
 
 #[test]
@@ -113,9 +112,9 @@ fn test_parse_valid_input() {
 }
 ```
 
-### Async Tests
+### 비동기 테스트
 ```csharp
-// C# — async test with xUnit
+// C# — xUnit을 사용한 비동기 테스트
 [Fact]
 public async Task GetUser_ReturnsUser()
 {
@@ -126,7 +125,7 @@ public async Task GetUser_ReturnsUser()
 ```
 
 ```rust
-// Rust — async test with tokio
+// Rust — tokio를 사용한 비동기 테스트
 #[tokio::test]
 async fn get_user_returns_user() {
     let service = UserService::new();
@@ -135,11 +134,11 @@ async fn get_user_returns_user() {
 }
 ```
 
-### Mocking with mockall
+### mockall을 사용한 모킹(Mocking)
 ```rust
 use mockall::automock;
 
-#[automock]                         // Generates MockUserRepo struct
+#[automock]                         // MockUserRepo 구조체 생성
 trait UserRepo {
     fn find_by_id(&self, id: u32) -> Option<User>;
 }
@@ -163,7 +162,7 @@ mod tests {
 ```
 
 ```csharp
-// C# — Moq equivalent
+// C# — Moq의 경우
 var mock = new Mock<IUserRepo>();
 mock.Setup(r => r.FindById(1)).Returns(new User { Name = "Alice" });
 var service = new UserService(mock.Object);
@@ -171,9 +170,9 @@ Assert.Equal("Alice", service.GetUser(1).Name);
 ```
 
 <details>
-<summary><strong>🏋️ Exercise: Write Comprehensive Tests</strong> (click to expand)</summary>
+<summary><strong>🏋️ 연습 문제: 포괄적인 테스트 작성하기</strong> (클릭하여 펼치기)</summary>
 
-**Challenge**: Given this function, write tests covering: happy path, empty input, numeric strings, and Unicode.
+**도전 과제**: 주어진 함수에 대해 정상적인 경로(happy path), 빈 입력, 숫자 문자열, 그리고 유니코드 문자를 포함하는 테스트를 작성해 보세요.
 
 ```rust
 pub fn title_case(input: &str) -> String {
@@ -191,7 +190,7 @@ pub fn title_case(input: &str) -> String {
 ```
 
 <details>
-<summary>🔑 Solution</summary>
+<summary>🔑 정답</summary>
 
 ```rust
 #[cfg(test)]
@@ -225,7 +224,7 @@ mod tests {
 
     #[test]
     fn extra_whitespace() {
-        // split_whitespace handles multiple spaces
+        // split_whitespace는 여러 개의 공백을 처리합니다.
         assert_eq!(title_case("  hello   world  "), "Hello World");
     }
 
@@ -241,20 +240,20 @@ mod tests {
 }
 ```
 
-**Key takeaway**: Rust's built-in test framework handles most unit testing needs. Use `rstest` for parameterized tests and `mockall` for mocking — no need for a large test framework like xUnit.
+**핵심 요점**: Rust의 내장 테스트 프레임워크는 대부분의 단위 테스트 요구사항을 충족합니다. 매개변수화된 테스트에는 `rstest`를, 모킹에는 `mockall`을 사용하세요. xUnit과 같은 대규모 테스트 프레임워크는 별도로 필요하지 않습니다.
 
 </details>
 </details>
 
 
 <!-- ch14a.1: Property Testing with proptest -->
-## Property Testing: Proving Correctness at Scale
+## 속성 기반 테스트: 대규모 정확성 검증 (Property Testing)
 
-C# developers familiar with **FsCheck** will recognize property-based testing: instead of writing individual test cases, you describe *properties* that must hold for **all possible inputs**, and the framework generates thousands of random inputs to try to break them.
+**FsCheck**가 익숙한 C# 개발자라면 속성 기반 테스트를 쉽게 이해하실 것입니다. 개별 테스트 케이스를 작성하는 대신, **모든 가능한 입력**에 대해 유지되어야 하는 *속성(property)*을 기술하면, 프레임워크가 수천 개의 무작위 입력을 생성하여 해당 속성을 깨뜨리려고 시도합니다.
 
-### Why Property Testing Matters
+### 속성 기반 테스트가 중요한 이유
 ```csharp
-// C# — Hand-written unit tests check specific cases
+// C# — 직접 작성한 단위 테스트는 특정 케이스만 확인합니다.
 [Fact]
 public void Reverse_Twice_Returns_Original()
 {
@@ -263,12 +262,12 @@ public void Reverse_Twice_Returns_Original()
     list.Reverse();
     Assert.Equal(new[] { 1, 2, 3 }, list);
 }
-// But what about empty lists? Single elements? 10,000 elements? Negative numbers?
-// You'd need dozens of hand-written cases.
+// 하지만 빈 리스트는 어떨까요? 요소가 하나뿐인 경우는? 요소가 10,000개인 경우는? 음수는?
+// 수십 개의 테스트 케이스를 직접 작성해야 할 것입니다.
 ```
 
 ```rust
-// Rust — proptest generates thousands of inputs automatically
+// Rust — proptest가 수천 개의 입력을 자동으로 생성합니다.
 use proptest::prelude::*;
 
 fn reverse<T: Clone>(v: &[T]) -> Vec<T> {
@@ -281,26 +280,26 @@ proptest! {
         let reversed_twice = reverse(&reverse(v));
         prop_assert_eq!(v, &reversed_twice);
     }
-    // proptest runs this with hundreds of random Vec<i32> values:
-    // [], [0], [i32::MIN, i32::MAX], [42; 999], random sequences...
-    // If it fails, it SHRINKS to the smallest failing input!
+    // proptest는 수백 개의 무작위 Vec<i32> 값을 사용하여 이 테스트를 실행합니다:
+    // [], [0], [i32::MIN, i32::MAX], [42; 999], 무작위 시퀀스 등...
+    // 만약 실패한다면, 실패를 유발하는 가장 작은 입력으로 축소(SHRINK)합니다!
 }
 ```
 
-### Getting Started with proptest
+### proptest 시작하기
 ```toml
 # Cargo.toml
 [dev-dependencies]
 proptest = "1.4"
 ```
 
-### Common Patterns for C# Developers
+### C# 개발자를 위한 공통 패턴
 
 ```rust
 use proptest::prelude::*;
 
-// 1. Roundtrip property: serialize → deserialize = identity
-// (Like testing JsonSerializer.Serialize → Deserialize)
+// 1. 왕복(Roundtrip) 속성: 직렬화 → 역직렬화 = 동일함
+// (JsonSerializer.Serialize → Deserialize 테스트와 유사)
 proptest! {
     #[test]
     fn json_roundtrip(name in "[a-zA-Z]{1,50}", age in 0u32..150) {
@@ -311,20 +310,20 @@ proptest! {
     }
 }
 
-// 2. Invariant property: output always satisfies a condition
+// 2. 불변성(Invariant) 속성: 출력 결과가 항상 특정 조건을 만족함
 proptest! {
     #[test]
     fn sort_output_is_sorted(ref v in prop::collection::vec(any::<i32>(), 0..500)) {
         let mut sorted = v.clone();
         sorted.sort();
-        // Every adjacent pair must be in order
+        // 모든 인접한 쌍이 순서대로 정렬되어 있어야 함
         for window in sorted.windows(2) {
             prop_assert!(window[0] <= window[1]);
         }
     }
 }
 
-// 3. Oracle property: compare two implementations
+// 3. 오라클(Oracle) 속성: 두 가지 구현 방식을 비교함
 proptest! {
     #[test]
     fn fast_path_matches_slow_path(input in "[0-9a-f]{1,100}") {
@@ -334,7 +333,7 @@ proptest! {
     }
 }
 
-// 4. Custom strategies: generate domain-specific test data
+// 4. 커스텀 전략(Custom strategies): 도메인 특화 테스트 데이터 생성
 fn valid_email() -> impl Strategy<Value = String> {
     ("[a-z]{1,20}", "[a-z]{1,10}", prop::sample::select(vec!["com", "org", "io"]))
         .prop_map(|(user, domain, tld)| format!("{}@{}.{}", user, domain, tld))
@@ -344,57 +343,57 @@ proptest! {
     #[test]
     fn email_parsing_accepts_valid_emails(email in valid_email()) {
         let result = Email::new(&email);
-        prop_assert!(result.is_ok(), "Failed to parse: {}", email);
+        prop_assert!(result.is_ok(), "이메일 파싱 실패: {}", email);
     }
 }
 ```
 
-### proptest vs FsCheck Comparison
+### proptest vs FsCheck 비교
 
-| Feature | C# FsCheck | Rust proptest |
+| 기능 | C# FsCheck | Rust proptest |
 |---------|-----------|---------------|
-| Random input generation | `Arb.Generate<T>()` | `any::<T>()` |
-| Custom generators | `Arb.Register<T>()` | `impl Strategy<Value = T>` |
-| Shrinking on failure | Automatic | Automatic |
-| String patterns | Manual | `"[regex]"` strategy |
-| Collection generation | `Gen.ListOf` | `prop::collection::vec(strategy, range)` |
-| Composing generators | `Gen.Select` | `.prop_map()`, `.prop_flat_map()` |
-| Config (# of cases) | `Config.MaxTest` | `#![proptest_config(ProptestConfig::with_cases(10000))]` inside `proptest!` block |
+| 무작위 입력 생성 | `Arb.Generate<T>()` | `any::<T>()` |
+| 커스텀 생성기 | `Arb.Register<T>()` | `impl Strategy<Value = T>` |
+| 실패 시 축소 (Shrinking) | 자동 | 자동 |
+| 문자열 패턴 | 수동 작성 | `"[regex]"` 전략 |
+| 컬렉션 생성 | `Gen.ListOf` | `prop::collection::vec(strategy, range)` |
+| 생성기 조합 | `Gen.Select` | `.prop_map()`, `.prop_flat_map()` |
+| 설정 (케이스 수) | `Config.MaxTest` | `proptest!` 블록 내부에 `#![proptest_config(ProptestConfig::with_cases(10000))]` 사용 |
 
-### When to Use Property Testing vs Unit Testing
+### 속성 기반 테스트 vs 단위 테스트 사용 시점
 
-| Use **unit tests** when | Use **proptest** when |
+| **단위 테스트**를 사용하는 경우 | **proptest**를 사용하는 경우 |
 |------------------------|----------------------|
-| Testing specific edge cases | Verifying invariants across all inputs |
-| Testing error messages/codes | Roundtrip properties (parse ↔ format) |
-| Integration/mock tests | Comparing two implementations |
-| Behavior depends on exact values | "For all X, property P holds" |
+| 특정 엣지 케이스를 테스트할 때 | 모든 입력에 대한 불변성을 검증할 때 |
+| 에러 메시지/코드를 테스트할 때 | 왕복 속성(파싱 ↔ 포맷팅)을 확인할 때 |
+| 통합/모의(mock) 테스트를 수행할 때 | 두 가지 다른 구현 방식을 비교할 때 |
+| 동작이 정확한 값에 의존할 때 | "모든 X에 대해, 속성 P가 성립한다"를 보장할 때 |
 
 ---
 
-## Integration Tests: the `tests/` Directory
+## 통합 테스트: `tests/` 디렉토리
 
-Unit tests live inside `src/` with `#[cfg(test)]`. Integration tests live in a separate `tests/` directory and test your crate's **public API** — just like how C# integration tests reference the project as an external assembly.
+단위 테스트는 `src/` 내부에 `#[cfg(test)]`와 함께 위치합니다. 통합 테스트는 별도의 `tests/` 디렉토리에 위치하며, 마치 C# 통합 테스트가 프로젝트를 외부 어셈블리로 참조하는 것처럼 크레이트의 **공개 API**를 테스트합니다.
 
 ```
 my_crate/
 ├── src/
-│   ├── lib.rs          // public API
-│   └── internal.rs     // private implementation
+│   ├── lib.rs          // 공개 API
+│   └── internal.rs     // 비공개 구현
 ├── tests/
-│   ├── smoke.rs        // each file is a separate test binary
+│   ├── smoke.rs        // 각 파일은 별도의 테스트 바이너리로 컴파일됨
 │   ├── api_tests.rs
 │   └── common/
-│       └── mod.rs      // shared test helpers
+│       └── mod.rs      // 공유 테스트 헬퍼
 └── Cargo.toml
 ```
 
-### Writing Integration Tests
+### 통합 테스트 작성하기
 
-Each file in `tests/` is compiled as a separate crate that depends on your library:
+`tests/` 내의 각 파일은 라이브러리에 의존하는 별도의 크레이트로 컴파일됩니다.
 
 ```rust
-// tests/smoke.rs — can only access pub items from my_crate
+// tests/smoke.rs — my_crate의 pub 아이템에만 접근 가능
 use my_crate::{process_order, Order, OrderResult};
 
 #[test]
@@ -405,9 +404,9 @@ fn process_valid_order_returns_confirmation() {
 }
 ```
 
-### Shared Test Helpers
+### 공유 테스트 헬퍼 (Shared Test Helpers)
 
-Put shared setup code in `tests/common/mod.rs` (not `tests/common.rs`, which would be treated as its own test file):
+공유 설정 코드는 `tests/common/mod.rs`에 두어야 합니다. (`tests/common.rs`로 만들면 그 자체가 하나의 테스트 파일로 취급되므로 주의하세요.)
 
 ```rust
 // tests/common/mod.rs
@@ -417,7 +416,7 @@ pub fn test_config() -> Config {
     Config::builder()
         .database_url("sqlite::memory:")
         .build()
-        .expect("test config must be valid")
+        .expect("테스트 설정이 유효해야 함")
 }
 ```
 
@@ -435,17 +434,15 @@ fn app_starts_with_test_config() {
 }
 ```
 
-### Running Specific Test Types
+### 특정 유형의 테스트 실행하기
 
 ```bash
-cargo test                  # run all tests (unit + integration)
-cargo test --lib            # unit tests only (like dotnet test --filter Category=Unit)
-cargo test --test smoke     # run only tests/smoke.rs
-cargo test --test api_tests # run only tests/api_tests.rs
+cargo test                  # 모든 테스트 실행 (단위 + 통합)
+cargo test --lib            # 단위 테스트만 실행 (dotnet test --filter Category=Unit과 유사)
+cargo test --test smoke     # tests/smoke.rs만 실행
+cargo test --test api_tests # tests/api_tests.rs만 실행
 ```
 
-**Key difference from C#:** Integration test files can only access your crate's `pub` API. Private functions are invisible — this forces you to test through the public interface, which is generally better test design.
+**C#과의 주요 차이점:** 통합 테스트 파일은 크레이트의 `pub` API에만 접근할 수 있습니다. 비공개 함수는 보이지 않으므로, 자연스럽게 공개 인터페이스를 통해 테스트하도록 유도됩니다. 이는 일반적으로 더 나은 테스트 설계를 지향하게 합니다.
 
 ***
-
-

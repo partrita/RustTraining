@@ -1,11 +1,10 @@
-## Constructor Patterns
+## 생성자 패턴
 
-> **What you'll learn:** How to create Rust structs without traditional constructors — `new()` conventions,
-> the `Default` trait, factory methods, and the builder pattern for complex initialization.
+> **학습 목표:** 전통적인 생성자 없이 Rust 구조체를 생성하는 방법( `new()` 관례, `Default` 트레이트, 팩토리 메서드, 그리고 복잡한 초기화를 위한 빌더 패턴)을 배웁니다.
 >
-> **Difficulty:** 🟢 Beginner
+> **난이도:** 🟢 초급
 
-### C# Constructor Patterns
+### C# 생성자 패턴
 ```csharp
 public class Configuration
 {
@@ -13,7 +12,7 @@ public class Configuration
     public int MaxConnections { get; set; }
     public bool EnableLogging { get; set; }
     
-    // Default constructor
+    // 기본 생성자
     public Configuration()
     {
         DatabaseUrl = "localhost";
@@ -21,7 +20,7 @@ public class Configuration
         EnableLogging = false;
     }
     
-    // Parameterized constructor
+    // 매개변수가 있는 생성자
     public Configuration(string databaseUrl, int maxConnections)
     {
         DatabaseUrl = databaseUrl;
@@ -29,7 +28,7 @@ public class Configuration
         EnableLogging = false;
     }
     
-    // Factory method
+    // 팩토리 메서드
     public static Configuration ForProduction()
     {
         return new Configuration("prod.db.server", 100)
@@ -40,7 +39,7 @@ public class Configuration
 }
 ```
 
-### Rust Constructor Patterns
+### Rust 생성자 패턴
 ```rust
 #[derive(Debug)]
 pub struct Configuration {
@@ -50,7 +49,7 @@ pub struct Configuration {
 }
 
 impl Configuration {
-    // Default constructor
+    // 기본 생성자 관례
     pub fn new() -> Configuration {
         Configuration {
             database_url: "localhost".to_string(),
@@ -59,7 +58,7 @@ impl Configuration {
         }
     }
     
-    // Parameterized constructor
+    // 매개변수가 있는 생성자 관례
     pub fn with_database(database_url: String, max_connections: u32) -> Configuration {
         Configuration {
             database_url,
@@ -68,7 +67,7 @@ impl Configuration {
         }
     }
     
-    // Factory method
+    // 팩토리 메서드
     pub fn for_production() -> Configuration {
         Configuration {
             database_url: "prod.db.server".to_string(),
@@ -77,10 +76,10 @@ impl Configuration {
         }
     }
     
-    // Builder pattern method
+    // 빌더 패턴 메서드
     pub fn enable_logging(mut self) -> Configuration {
         self.enable_logging = true;
-        self  // Return self for chaining
+        self  // 메서드 체이닝을 위해 self 반환
     }
     
     pub fn max_connections(mut self, count: u32) -> Configuration {
@@ -89,7 +88,7 @@ impl Configuration {
     }
 }
 
-// Default trait implementation
+// Default 트레이트 구현
 impl Default for Configuration {
     fn default() -> Self {
         Self::new()
@@ -97,26 +96,26 @@ impl Default for Configuration {
 }
 
 fn main() {
-    // Different construction patterns
+    // 다양한 생성 패턴
     let config1 = Configuration::new();
     let config2 = Configuration::with_database("localhost:5432".to_string(), 20);
     let config3 = Configuration::for_production();
     
-    // Builder pattern
+    // 빌더 패턴
     let config4 = Configuration::new()
         .enable_logging()
         .max_connections(50);
     
-    // Using Default trait
+    // Default 트레이트 사용
     let config5 = Configuration::default();
     
     println!("{:?}", config4);
 }
 ```
 
-### Builder Pattern Implementation
+### 빌더(Builder) 패턴 구현
 ```rust
-// More complex builder pattern
+// 더 복잡한 빌더 패턴
 #[derive(Debug)]
 pub struct DatabaseConfig {
     host: String,
@@ -179,9 +178,9 @@ impl DatabaseConfigBuilder {
     }
     
     pub fn build(self) -> Result<DatabaseConfig, String> {
-        let host = self.host.ok_or("Host is required")?;
-        let port = self.port.ok_or("Port is required")?;
-        let username = self.username.ok_or("Username is required")?;
+        let host = self.host.ok_or("호스트가 필요합니다")?;
+        let port = self.port.ok_or("포트가 필요합니다")?;
+        let username = self.username.ok_or("사용자 이름이 필요합니다")?;
         
         Ok(DatabaseConfig {
             host,
@@ -203,7 +202,7 @@ fn main() {
         .enable_ssl()
         .timeout(60)
         .build()
-        .expect("Failed to build config");
+        .expect("설정 생성 실패");
     
     println!("{:?}", config);
 }
@@ -211,19 +210,19 @@ fn main() {
 
 ---
 
-## Exercises
+## 연습 문제
 
 <details>
-<summary><strong>🏋️ Exercise: Builder with Validation</strong> (click to expand)</summary>
+<summary><strong>🏋️ 실습: 유효성 검사를 포함한 빌더</strong> (펼치기)</summary>
 
-Create an `EmailBuilder` that:
-1. Requires `to` and `subject` (builder won't compile without them — use a typestate or validate in `build()`)
-2. Has optional `body` and `cc` (Vec of addresses)
-3. `build()` returns `Result<Email, String>` — rejects empty `to` or `subject`
-4. Write tests proving invalid inputs are rejected
+다음을 수행하는 `EmailBuilder`를 만드세요:
+1. `to`와 `subject`를 필수 인자로 받습니다. (빌더는 이 값들이 없으면 컴파일되지 않거나 `build()`에서 검증해야 합니다.)
+2. 선택 사항으로 `body`와 `cc`(주소 목록인 Vec)를 가집니다.
+3. `build()`는 `Result<Email, String>`을 반환하며, `to`나 `subject`가 비어 있으면 거부합니다.
+4. 잘못된 입력이 거부되는지 확인하는 테스트를 작성하세요.
 
 <details>
-<summary>🔑 Solution</summary>
+<summary>🔑 해답</summary>
 
 ```rust
 #[derive(Debug)]
@@ -259,9 +258,9 @@ impl EmailBuilder {
     }
     fn build(self) -> Result<Email, String> {
         let to = self.to.filter(|s| !s.is_empty())
-            .ok_or("'to' is required")?;
+            .ok_or("'to'가 필요합니다")?;
         let subject = self.subject.filter(|s| !s.is_empty())
-            .ok_or("'subject' is required")?;
+            .ok_or("'subject'가 필요합니다")?;
         Ok(Email { to, subject, body: self.body, cc: self.cc })
     }
 }
@@ -273,13 +272,13 @@ mod tests {
     fn valid_email() {
         let email = EmailBuilder::new()
             .to("alice@example.com")
-            .subject("Hello")
+            .subject("안녕하세요")
             .build();
         assert!(email.is_ok());
     }
     #[test]
     fn missing_to_fails() {
-        let email = EmailBuilder::new().subject("Hello").build();
+        let email = EmailBuilder::new().subject("안녕하세요").build();
         assert!(email.is_err());
     }
 }
@@ -289,5 +288,3 @@ mod tests {
 </details>
 
 ***
-
-

@@ -1,14 +1,11 @@
 <!-- BEGIN MICROSOFT SECURITY.MD V1.0.0 BLOCK -->
 
-## Security
+## 보안 (Security)
 
-Microsoft takes the security of our software products and services seriously, which
-includes all source code repositories in our GitHub organizations.
+Microsoft는 Microsoft의 GitHub 조직 내 모든 소스 코드 저장소를 포함하여 소프트웨어 제품 및 서비스의 보안을 중요하게 생각합니다.
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+**보안 취약점을 공개적인 GitHub 이슈를 통해 보고하지 마세요.**
 
-For security reporting information, locations, contact information, and policies,
-please review the latest guidance for Microsoft repositories at
-[https://aka.ms/SECURITY.md](https://aka.ms/SECURITY.md).
+보안 보고 정보, 위치, 연락처 정보 및 정책에 대해서는 Microsoft 저장소를 위한 최신 지침인 [https://aka.ms/SECURITY.md](https://aka.ms/SECURITY.md)를 확인해 주시기 바랍니다.
 
 <!-- END MICROSOFT SECURITY.MD BLOCK -->

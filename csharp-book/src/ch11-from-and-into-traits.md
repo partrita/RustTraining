@@ -1,33 +1,32 @@
-## Type Conversions in Rust
+## Rust의 타입 변환(Type Conversions)
 
-> **What you'll learn:** `From`/`Into` traits vs C#'s implicit/explicit operators, `TryFrom`/`TryInto`
-> for fallible conversions, `FromStr` for parsing, and idiomatic string conversion patterns.
+> **학습 내용:** Rust의 `From`/`Into` 트레이트와 C#의 암시적/명시적(implicit/explicit) 연산자 비교, 실패할 수 있는 변환을 위한 `TryFrom`/`TryInto`, 문자열 파싱을 위한 `FromStr`, 그리고 관용적인 문자열 변환 패턴.
 >
-> **Difficulty:** 🟡 Intermediate
+> **난이도:** 🟡 중급
 
-C# uses implicit/explicit conversions and casting operators. Rust uses the `From` and `Into` traits for safe, explicit conversions.
+C#은 암시적/명시적 변환과 캐스팅 연산자를 사용합니다. Rust는 안전하고 명시적인 변환을 위해 `From`과 `Into` 트레이트를 사용합니다.
 
-### C# Conversion Patterns
+### C#의 변환 패턴
 ```csharp
-// C# implicit/explicit conversions
+// C# 암시적/명시적 변환
 public class Temperature
 {
     public double Celsius { get; }
     
     public Temperature(double celsius) { Celsius = celsius; }
     
-    // Implicit conversion
+    // 암시적 변환
     public static implicit operator double(Temperature t) => t.Celsius;
     
-    // Explicit conversion
+    // 명시적 변환
     public static explicit operator Temperature(double d) => new Temperature(d);
 }
 
-double temp = new Temperature(100.0);  // implicit
-Temperature t = (Temperature)37.5;     // explicit
+double temp = new Temperature(100.0);  // 암시적
+Temperature t = (Temperature)37.5;     // 명시적
 ```
 
-### Rust From and Into
+### Rust의 From과 Into
 ```rust
 #[derive(Debug)]
 struct Temperature {
@@ -47,16 +46,16 @@ impl From<Temperature> for f64 {
 }
 
 fn main() {
-    // From
+    // From 사용
     let temp = Temperature::from(100.0);
     
-    // Into (automatically available when From is implemented)
+    // Into 사용 (From을 구현하면 자동으로 사용 가능)
     let temp2: Temperature = 37.5.into();
     
-    // Works in function arguments too
+    // 함수 인자에서도 활용 가능
     fn process_temp(temp: impl Into<Temperature>) {
         let t: Temperature = temp.into();
-        println!("Temperature: {:.1}°C", t.celsius);
+        println!("온도: {:.1}°C", t.celsius);
     }
     
     process_temp(98.6);
@@ -66,18 +65,18 @@ fn main() {
 
 ```mermaid
 graph LR
-    A["impl From&lt;f64&gt; for Temperature"] -->|"auto-generates"| B["impl Into&lt;Temperature&gt; for f64"]
-    C["Temperature::from(37.5)"] -->|"explicit"| D["Temperature"]
-    E["37.5.into()"] -->|"implicit via Into"| D
-    F["fn process(t: impl Into&lt;Temperature&gt;)"] -->|"accepts both"| D
+    A["impl From&lt;f64&gt; for Temperature"] -->|"자동 생성"| B["impl Into&lt;Temperature&gt; for f64"]
+    C["Temperature::from(37.5)"] -->|"명시적"| D["Temperature"]
+    E["37.5.into()"] -->|"Into를 통한 암시적 효과"| D
+    F["fn process(t: impl Into&lt;Temperature&gt;)"] -->|"둘 다 수용"| D
 
     style A fill:#c8e6c9,color:#000
     style B fill:#bbdefb,color:#000
 ```
 
-> **Rule of thumb**: Implement `From`, and you get `Into` for free. Callers can use whichever reads better.
+> **기본 원칙**: `From`을 구현하십시오. 그러면 `Into`를 공짜로 얻게 됩니다. 호출자는 문맥상 더 읽기 좋은 쪽을 골라 사용할 수 있습니다.
 
-### TryFrom for Fallible Conversions
+### TryFrom: 실패할 수 있는 변환
 ```rust
 use std::convert::TryFrom;
 
@@ -86,7 +85,7 @@ impl TryFrom<i32> for Temperature {
     
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         if value < -273 {
-            Err(format!("Temperature {}°C is below absolute zero", value))
+            Err(format!("온도 {}°C는 절대 영도보다 낮습니다", value))
         } else {
             Ok(Temperature { celsius: value as f64 })
         }
@@ -95,25 +94,25 @@ impl TryFrom<i32> for Temperature {
 
 fn main() {
     match Temperature::try_from(-300) {
-        Ok(t) => println!("Valid: {:?}", t),
-        Err(e) => println!("Error: {}", e),
+        Ok(t) => println!("유효: {:?}", t),
+        Err(e) => println!("에러: {}", e),
     }
 }
 ```
 
-### String Conversions
+### 문자열 변환
 ```rust
-// ToString via Display trait
+// Display 트레이트를 통한 ToString 구현
 impl std::fmt::Display for Temperature {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:.1}°C", self.celsius)
     }
 }
 
-// Now .to_string() works automatically
+// 이제 .to_string()이 자동으로 작동합니다.
 let s = Temperature::from(100.0).to_string(); // "100.0°C"
 
-// FromStr for parsing
+// 파싱을 위한 FromStr 구현
 use std::str::FromStr;
 
 impl FromStr for Temperature {
@@ -121,7 +120,7 @@ impl FromStr for Temperature {
     
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim_end_matches("°C").trim();
-        let celsius: f64 = s.parse().map_err(|e| format!("Invalid temp: {}", e))?;
+        let celsius: f64 = s.parse().map_err(|e| format!("유효하지 않은 온도: {}", e))?;
         Ok(Temperature { celsius })
     }
 }
@@ -131,22 +130,22 @@ let t: Temperature = "100.0°C".parse().unwrap();
 
 ---
 
-## Exercises
+## 연습 문제
 
 <details>
-<summary><strong>🏋️ Exercise: Currency Converter</strong> (click to expand)</summary>
+<summary><strong>🏋️ 연습 문제: 화폐 변환기</strong> (클릭하여 확장)</summary>
 
-Create a `Money` struct that demonstrates the full conversion ecosystem:
+전체 타입 변환 생태계를 보여주는 `Money` 구조체를 만드십시오.
 
-1. `Money { cents: i64 }` (stores value in cents to avoid floating-point issues)
-2. Implement `From<i64>` (treats input as whole dollars → `cents = dollars * 100`)
-3. Implement `TryFrom<f64>` — reject negative amounts, round to nearest cent
-4. Implement `Display` to show `"$1.50"` format
-5. Implement `FromStr` to parse `"$1.50"` or `"1.50"` back into `Money`
-6. Write a function `fn total(items: &[impl Into<Money> + Copy]) -> Money` that sums values
+1. `Money { cents: i64 }` 정의 (부동 소수점 오차를 피하기 위해 센트 단위로 값을 저장함)
+2. `From<i64>` 구현 (입력을 달러 단위로 간주하여 `cents = dollars * 100`으로 변환)
+3. `TryFrom<f64>` 구현 — 음수 금액은 거부하고, 가장 가까운 센트 단위로 반올림
+4. `Display`를 구현하여 `"$1.50"` 형식으로 출력
+5. `FromStr`을 구현하여 `"$1.50"` 또는 `"1.50"` 문자열을 다시 `Money`로 파싱
+6. 값을 합산하는 함수 `fn total(items: &[impl Into<Money> + Copy]) -> Money` 작성
 
 <details>
-<summary>🔑 Solution</summary>
+<summary>🔑 정답</summary>
 
 ```rust
 use std::fmt;
@@ -165,7 +164,7 @@ impl TryFrom<f64> for Money {
     type Error = String;
     fn try_from(value: f64) -> Result<Self, Self::Error> {
         if value < 0.0 {
-            Err(format!("negative amount: {value}"))
+            Err(format!("음수 금액: {value}"))
         } else {
             Ok(Money { cents: (value * 100.0).round() as i64 })
         }
@@ -199,5 +198,3 @@ fn main() {
 </details>
 
 ***
-
-
