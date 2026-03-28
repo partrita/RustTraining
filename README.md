@@ -98,6 +98,6 @@ cd c-cpp-book && mdbook serve --open    # http://localhost:3000
 
 ### 배포
 
-사이트는 `.github/workflows/pages.yml`을 통해 `master` 브랜치에 푸시될 때 GitHub Pages로 자동 배포됩니다. 수동 작업은 필요하지 않습니다.
+사이트는 `.github/workflows/pages.yml`을 통해 `main` 브랜치에 푸시될 때 GitHub Pages로 자동 배포됩니다. 수동 작업은 필요하지 않습니다.
 
 </details>
