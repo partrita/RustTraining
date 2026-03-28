@@ -1,300 +1,75 @@
-# Capstone Project: Type-Safe Task Scheduler
-
-This project integrates patterns from across the book into a single, production-style system. You'll build a **type-safe, concurrent task scheduler** that uses generics, traits, typestate, channels, error handling, and testing.
-
-**Estimated time**: 4–6 hours | **Difficulty**: ★★★
-
-> **What you'll practice:**
-> - Generics and trait bounds (Ch 1–2)
-> - Typestate pattern for task lifecycle (Ch 3)
-> - PhantomData for zero-cost state markers (Ch 4)
-> - Channels for worker communication (Ch 5)
-> - Concurrency with scoped threads (Ch 6)
-> - Error handling with `thiserror` (Ch 9)
-> - Testing with property-based tests (Ch 13)
-> - API design with `TryFrom` and validated types (Ch 14)
-
-## The Problem
-
-Build a task scheduler where:
-
-1. **Tasks** have a typed lifecycle: `Pending → Running → Completed` (or `Failed`)
-2. **Workers** pull tasks from a channel, execute them, and report results
-3. The **scheduler** manages task submission, worker coordination, and result collection
-4. Invalid state transitions are **compile-time errors**
-
-```mermaid
-stateDiagram-v2
-    [*] --> Pending: scheduler.submit(task)
-    Pending --> Running: worker picks up task
-    Running --> Completed: task succeeds
-    Running --> Failed: task returns Err
-    Completed --> [*]: scheduler.results()
-    Failed --> [*]: scheduler.results()
-
-    Pending --> Pending: ❌ can't execute directly
-    Completed --> Running: ❌ can't re-run
-```
-
-## Step 1: Define the Task Types
-
-Start with the typestate markers and a generic `Task`:
-
-```rust
-use std::marker::PhantomData;
-
-// --- State markers (zero-sized) ---
-struct Pending;
-struct Running;
-struct Completed;
-struct Failed;
-
-// --- Task ID (newtype for type safety) ---
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct TaskId(u64);
-
-// --- The Task struct, parameterized by lifecycle state ---
-struct Task<State, R> {
-    id: TaskId,
-    name: String,
-    _state: PhantomData<State>,
-    _result: PhantomData<R>,
-}
-```
-
-**Your job**: Implement state transitions so that:
-- `Task<Pending, R>` can transition to `Task<Running, R>` (via `start()`)
-- `Task<Running, R>` can transition to `Task<Completed, R>` or `Task<Failed, R>`
-- No other transitions compile
-
-<details>
-<summary>💡 Hint</summary>
-
-Each transition method should consume `self` and return the new state:
-
-```rust
-impl<R> Task<Pending, R> {
-    fn start(self) -> Task<Running, R> {
-        Task {
-            id: self.id,
-            name: self.name,
-            _state: PhantomData,
-            _result: PhantomData,
-        }
-    }
-}
-```
-
-</details>
-
-## Step 2: Define the Work Function
-
-Tasks need a function to execute. Use a boxed closure:
-
-```rust
-struct WorkItem<R: Send + 'static> {
-    id: TaskId,
-    name: String,
-    work: Box<dyn FnOnce() -> Result<R, String> + Send>,
-}
-```
-
-**Your job**: Implement `WorkItem::new()` that accepts a task name and closure.
-Add a `TaskId` generator (simple atomic counter or mutex-protected counter).
-
-## Step 3: Error Handling
-
-Define the scheduler's error types using `thiserror`:
-
-```rust,ignore
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum SchedulerError {
-    #[error("scheduler is shut down")]
-    ShutDown,
-
-    #[error("task {0:?} failed: {1}")]
-    TaskFailed(TaskId, String),
-
-    #[error("channel send error")]
-    ChannelError(#[from] std::sync::mpsc::SendError<()>),
-
-    #[error("worker panicked")]
-    WorkerPanic,
-}
-```
-
-## Step 4: The Scheduler
-
-Build the scheduler using channels (Ch 5) and scoped threads (Ch 6):
-
-```rust
-use std::sync::mpsc;
-
-struct Scheduler<R: Send + 'static> {
-    sender: Option<mpsc::Sender<WorkItem<R>>>,
-    results: mpsc::Receiver<TaskResult<R>>,
-    num_workers: usize,
-}
-
-struct TaskResult<R> {
-    id: TaskId,
-    name: String,
-    outcome: Result<R, String>,
-}
-```
-
-**Your job**: Implement:
-- `Scheduler::new(num_workers: usize) -> Self` — creates channels and spawns workers
-- `Scheduler::submit(&self, item: WorkItem<R>) -> Result<TaskId, SchedulerError>`
-- `Scheduler::shutdown(self) -> Vec<TaskResult<R>>` — drops the sender, joins workers, collects results
-
-<details>
-<summary>💡 Hint — Worker loop</summary>
-
-```rust
-fn worker_loop<R: Send + 'static>(
-    rx: std::sync::Arc<std::sync::Mutex<mpsc::Receiver<WorkItem<R>>>>,
-    result_tx: mpsc::Sender<TaskResult<R>>,
-    worker_id: usize,
-) {
-    loop {
-        let item = {
-            let rx = rx.lock().unwrap();
-            rx.recv()
-        };
-        match item {
-            Ok(work_item) => {
-                let outcome = (work_item.work)();
-                let _ = result_tx.send(TaskResult {
-                    id: work_item.id,
-                    name: work_item.name,
-                    outcome,
-                });
-            }
-            Err(_) => break, // Channel closed
-        }
-    }
-}
-```
-
-</details>
-
-## Step 5: Integration Test
-
-Write tests that verify:
-
-1. **Happy path**: Submit 10 tasks, shut down, verify all 10 results are `Ok`
-2. **Error handling**: Submit tasks that fail, verify `TaskResult.outcome` is `Err`
-3. **Empty scheduler**: Create and immediately shut down — no panics
-4. **Property test** (bonus): Use `proptest` to verify that for any N tasks (1..100), the scheduler always returns exactly N results
-
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn happy_path() {
-        let scheduler = Scheduler::<String>::new(4);
-
-        for i in 0..10 {
-            let item = WorkItem::new(
-                format!("task-{i}"),
-                move || Ok(format!("result-{i}")),
-            );
-            scheduler.submit(item).unwrap();
-        }
-
-        let results = scheduler.shutdown();
-        assert_eq!(results.len(), 10);
-        for r in &results {
-            assert!(r.outcome.is_ok());
-        }
-    }
-
-    #[test]
-    fn handles_failures() {
-        let scheduler = Scheduler::<String>::new(2);
-
-        scheduler.submit(WorkItem::new("good", || Ok("ok".into()))).unwrap();
-        scheduler.submit(WorkItem::new("bad", || Err("boom".into()))).unwrap();
-
-        let results = scheduler.shutdown();
-        assert_eq!(results.len(), 2);
-
-        let failures: Vec<_> = results.iter()
-            .filter(|r| r.outcome.is_err())
-            .collect();
-        assert_eq!(failures.len(), 1);
-    }
-}
-```
-
-## Step 6: Put It All Together
-
-Here's the `main()` that demonstrates the full system:
-
-```rust,ignore
-fn main() {
-    let scheduler = Scheduler::<String>::new(4);
-
-    // Submit tasks with varying workloads
-    for i in 0..20 {
-        let item = WorkItem::new(
-            format!("compute-{i}"),
-            move || {
-                // Simulate work
-                std::thread::sleep(std::time::Duration::from_millis(10));
-                if i % 7 == 0 {
-                    Err(format!("task {i} hit a simulated error"))
-                } else {
-                    Ok(format!("task {i} completed with value {}", i * i))
-                }
-            },
-        );
-        // NOTE: .unwrap() is used for brevity — handle SendError in production.
-        scheduler.submit(item).unwrap();
-    }
-
-    println!("All tasks submitted. Shutting down...");
-    let results = scheduler.shutdown();
-
-    let (ok, err): (Vec<_>, Vec<_>) = results.iter()
-        .partition(|r| r.outcome.is_ok());
-
-    println!("\n✅ Succeeded: {}", ok.len());
-    for r in &ok {
-        println!("  {} → {}", r.name, r.outcome.as_ref().unwrap());
-    }
-
-    println!("\n❌ Failed: {}", err.len());
-    for r in &err {
-        println!("  {} → {}", r.name, r.outcome.as_ref().unwrap_err());
-    }
-}
-```
-
-## Evaluation Criteria
-
-| Criterion | Target |
-|-----------|--------|
-| Type safety | Invalid state transitions don't compile |
-| Concurrency | Workers run in parallel, no data races |
-| Error handling | All failures captured in `TaskResult`, no panics |
-| Testing | At least 3 tests; bonus for proptest |
-| Code organization | Clean module structure, public API uses validated types |
-| Documentation | Key types have doc comments explaining invariants |
-
-## Extension Ideas
-
-Once the basic scheduler works, try these enhancements:
-
-1. **Priority queue**: Add a `Priority` newtype (1–10) and process higher-priority tasks first
-2. **Retry policy**: Failed tasks retry up to N times before being marked permanently failed
-3. **Cancellation**: Add a `cancel(TaskId)` method that removes pending tasks
-4. **Async version**: Port to `tokio::spawn` with `tokio::sync::mpsc` channels (Ch 15)
-5. **Metrics**: Track per-worker task counts, average execution time, and failure rates
-
-***
+# 19. 캡스톤 프로젝트: 타입 안전한 태스크 스케줄러 🟢
+
+이 프로젝트는 본서에서 배운 다양한 패턴들을 하나의 완성된 시스템으로 통합하는 과정입니다. 제네릭, 트레이트, 타입 상태(Type-state), 채널, 에러 처리, 테스트 기법을 모두 동원하여 **타입 안전하고 동시성을 지원하는 태스크 스케줄러**를 구축해 봅니다.
+
+**예상 소요 시간**: 4~6시간 | **난이도**: ★★★
+
+> **실무 연습 포인트:**
+> - 제네릭과 트레이트 경계 (1~2장)
+> - 태스크 생명주기를 위한 타입 상태 패턴 (3장)
+> - 제로 비용 상태 마커를 위한 PhantomData (4장)
+> - 워커 통신을 위한 채널 (5장)
+> - 스코프 스레드를 이용한 동시성 (6장)
+> - `thiserror`를 활용한 에러 처리 (10장)
+> - 속성 기반 테스트를 포함한 검증 (14장)
+> - `TryFrom`과 유효성 검사 타입 설계 (15장)
+
+---
+
+### 프로젝트 개요: 해결해야 할 문제
+
+다음 요구사항을 충족하는 태스크 스케줄러를 만드세요.
+
+1. **태스크(Task)**는 엄격한 생명주기를 가집니다: `대기(Pending) → 실행 중(Running) → 완료(Completed)` 혹은 `실패(Failed)`.
+2. **워커(Worker)**는 채널에서 태스크를 가져와 실행하고 결과를 보고합니다.
+3. **스케줄러(Scheduler)**는 태스크 제출, 워커 관리, 결과 수집을 총괄합니다.
+4. **잘못된 상태 전이**는 런타임 패닉이 아닌 **컴파일 타임 에러**로 차단되어야 합니다.
+
+---
+
+### 단계별 가이드
+
+#### 1단계: 태스크 타입 정의
+`PhantomData`와 타입 상태 마커를 사용해 `Task` 구조체를 설계하세요. `Pending` 상태의 태스크만 `start()` 메서드를 가질 수 있으며, 호출 시 `Running` 상태의 태스크를 반환해야 합니다.
+
+#### 2단계: 작업 함구(Work Function) 정의
+태스크가 실제로 수행할 로직을 담을 박스형 클로저(`Box<dyn FnOnce(...)>`)를 포함하는 `WorkItem`을 만드세요.
+
+#### 3단계: 에러 처리 시스템 구축
+`thiserror`를 사용하여 스케줄러 폐쇄, 태스크 실패, 채널 통신 에러, 워커 패닉 등을 구분하는 에러 열거형을 정의하세요.
+
+#### 4단계: 스케줄러 구현
+채널과 스코프 스레드를 사용하여 여러 워커가 병렬로 작업을 처리하고 결과를 수집하는 전체 로직을 완성하세요.
+
+#### 5단계: 통합 테스트 및 검증
+- 모든 태스크가 정상 처리되는 케이스(Happy path)
+- 특정 태스크가 실패할 때의 에러 핸들링
+- 빈 스케줄러가 정상적으로 소멸되는지 확인하는 테스트를 작성하세요.
+
+---
+
+### 평가 기준
+
+| 항목 | 목표 |
+| :--- | :--- |
+| **타입 안전성** | 잘못된 상태 전이(예: 완료된 태스크 재실행)가 컴파일되지 않음 |
+| **동시성** | 워커들이 병렬로 작동하며 데이터 경합(Data Race)이 없음 |
+| **에러 처리** | 모든 실패가 `TaskResult`에 캡처되며, 예기치 않은 패닉이 발생하지 않음 |
+| **코드 구조** | API가 `impl Into`나 유효성 검사 타입을 사용하여 사용하기 편리함 |
+| **문서화** | 주요 타입과 트레이트에 불변성(Invariant)을 설명하는 주석이 포함됨 |
+
+---
+
+### 확장 아이디어 (심화 학습)
+
+기본 스케줄러가 완성되었다면 다음 기능들을 추가해 보세요:
+1. **우선순위 큐**: 특정 우선순위가 높은 태스크를 먼저 처리합니다.
+2. **재시도 전략(Retry Policy)**: 실패한 태스크를 N번까지 자동으로 재시도합니다.
+3. **취소(Cancellation)**: 특정 `TaskId`를 가진 대기 중인 태스크를 취소합니다.
+4. **비동기 버전**: `tokio`와 비동기 채널을 사용하도록 포팅해 보세요.
+5. **메트릭 수집**: 각 워커별 처리량, 평균 실행 시간, 실패율을 추적합니다.
+
+---
+
+*본 프로젝트를 성공적으로 마치셨다면, Rust의 핵심 디자인 패턴을 실무에 적용할 준비가 되신 것입니다.*
+

@@ -1,379 +1,114 @@
-# Single-Use Types — Cryptographic Guarantees via Ownership 🟡
+# 3. 단회용 타입 — 소유권을 통한 암호학적 보장 🟡
 
-> **What you'll learn:** How Rust's move semantics act as a linear type system, making nonce reuse, double key-agreement, and accidental fuse re-programming impossible at compile time.
+> **학습 목표:** Rust의 이동 의미론(Move semantics)이 어떻게 선형 타입 시스템(Linear type system)처럼 작동하여 논스(Nonce) 재사용, 키 합의 중복, 그리고 우발적인 퓨즈(Fuse) 재프로그래밍을 컴파일 타임에 방지하는지 배웁니다.
 >
-> **Cross-references:** [ch01](ch01-the-philosophy-why-types-beat-tests.md) (philosophy), [ch04](ch04-capability-tokens-zero-cost-proof-of-aut.md) (capability tokens), [ch05](ch05-protocol-state-machines-type-state-for-r.md) (type-state), [ch14](ch14-testing-type-level-guarantees.md) (testing compile-fail)
+> **관련 장:** [01장](ch01-the-philosophy-why-types-beat-tests.md) (철학), [04장](ch13-reference-card.md) (역량 토큰), [05장](ch05-protocol-state-machines-type-state-for-r.md) (타입 상태), [14장](ch14-testing-type-level-guarantees.md) (컴파일 실패 테스트)
 
-## The Nonce Reuse Catastrophe
+---
 
-In authenticated encryption (AES-GCM, ChaCha20-Poly1305), reusing a nonce with the
-same key is **catastrophic** — it leaks the XOR of two plaintexts and often the
-authentication key itself. This isn't a theoretical concern:
+### 논스 재사용의 재앙 (The Nonce Reuse Catastrophe)
 
-- **2016**: Forbidden Attack on AES-GCM in TLS — nonce reuse allowed plaintext recovery
-- **2020**: Multiple IoT firmware update systems found reusing nonces due to poor RNG
+인증된 암호화(AES-GCM, ChaCha20-Poly1305 등)에서 동일한 키로 논스를 재사용하는 것은 **치명적**입니다. 이는 두 평문의 XOR 값을 노출시키고, 심지어 인증 키 자체를 유출할 수도 있습니다. 이는 이론적인 문제가 아닙니다.
 
-In C/C++, a nonce is just a `uint8_t[12]`. Nothing prevents you from using it twice.
+- **2016년**: TLS의 AES-GCM에 대한 Forbidden Attack — 논스 재사용으로 평문 복구 가능함이 증명됨.
+- **2020년**: 여러 IoT 펌웨어 업데이트 시스템에서 부실한 난수 생성기(RNG)로 인해 논스가 재사용되는 사례 발견.
+
+C/C++에서 논스는 그저 `uint8_t[12]`일 뿐입니다. 이를 두 번 사용하는 것을 막을 장치가 없습니다.
 
 ```c
-// C — nothing stops nonce reuse
+// C — 논스 재사용을 막을 수 없음
 uint8_t nonce[12];
 generate_nonce(nonce);
-encrypt(key, nonce, msg1, out1);   // ✅ first use
-encrypt(key, nonce, msg2, out2);   // 🐛 CATASTROPHIC: same nonce
+encrypt(key, nonce, msg1, out1);   // ✅ 첫 번째 사용
+encrypt(key, nonce, msg2, out2);   // 🐛 치명적 버그: 동일한 논스 재사용
 ```
 
-## Move Semantics as Linear Types
+---
 
-Rust's ownership system is effectively a **linear type system** — a value can be used
-exactly once (moved) unless it implements `Copy`. The `ring` crate exploits this:
+### 선형 타입으로서의 이동 의미론
+
+Rust의 소유권 시스템은 사실상 **선형 타입 시스템**과 같습니다. `Copy`를 구현하지 않은 값은 정확히 한 번만 사용(이동)될 수 있기 때문입니다. 암호학 라이브러리인 `ring` 크레이트는 이 점을 활용합니다.
 
 ```rust,ignore
-// ring::aead::Nonce is:
-// - NOT Clone
-// - NOT Copy
-// - Consumed by value when used
-pub struct Nonce(/* private */);
-
-impl Nonce {
-    pub fn try_assume_unique_for_key(value: &[u8]) -> Result<Self, Unspecified> {
-        // ...
-    }
-    // No Clone, no Copy — can only be used once
-}
+// ring::aead::Nonce 타입의 특징:
+// - Clone 불가
+// - Copy 불가
+// - 사용 시 값으로 소비(Consume)됨
+pub struct Nonce(/* 비공개 필드 */);
 ```
 
-When you pass a `Nonce` to `seal_in_place()`, **it moves**:
+`Nonce`를 `seal_in_place()` 함수에 전달하면 **값이 이동**합니다.
 
 ```rust,ignore
-// Pseudocode mirroring ring's API shape
 fn seal_in_place(
     key: &SealingKey,
-    nonce: Nonce,       // ← moved, not borrowed
+    nonce: Nonce,       // ← 참조가 아닌 값으로 "이동"함
     data: &mut Vec<u8>,
 ) -> Result<(), Error> {
-    // ... encrypt data in place ...
-    // nonce is consumed — cannot be used again
+    // ... 암호화 수행 ...
+    // 함수가 끝나면 nonce는 소멸됨 — 다시 사용할 수 없음
     Ok(())
 }
 ```
 
-Attempting to reuse it:
+재사용을 시도하면 컴파일 에러가 발생합니다.
 
 ```rust,ignore
 fn bad_encrypt(key: &SealingKey, data1: &mut Vec<u8>, data2: &mut Vec<u8>) {
-    // .unwrap() is safe — a 12-byte array is always a valid nonce.
     let nonce = Nonce::try_assume_unique_for_key(&[0u8; 12]).unwrap();
-    seal_in_place(key, nonce, data1).unwrap();  // ✅ nonce moved here
+    seal_in_place(key, nonce, data1).unwrap();  // ✅ nonce가 여기서 이동함
     // seal_in_place(key, nonce, data2).unwrap();
-    //                    ^^^^^ ERROR: use of moved value ❌
+    //                    ^^^^^ ERROR: 이동된 값 사용 (use of moved value) ❌
 }
 ```
 
-The compiler **proves** that each nonce is used exactly once. No test required.
+컴파일러가 각 논스가 정확히 한 번만 사용됨을 **증명**합니다. 별도의 테스트가 필요 없습니다.
 
-## Case Study: ring's Nonce
+---
 
-The `ring` crate goes further with `NonceSequence` — a trait that **generates**
-nonces and is also non-cloneable:
+### 하드웨어 응용: 일회성 퓨즈(OTP Fuse) 프로그래밍
 
-```rust,ignore
-/// A sequence of unique nonces.
-/// Not Clone — once bound to a key, cannot be duplicated.
-pub trait NonceSequence {
-    fn advance(&mut self) -> Result<Nonce, Unspecified>;
-}
-
-/// SealingKey wraps a NonceSequence — each seal() auto-advances.
-pub struct SealingKey<N: NonceSequence> {
-    key: UnboundKey,   // consumed during construction
-    nonce_seq: N,
-}
-
-impl<N: NonceSequence> SealingKey<N> {
-    pub fn new(key: UnboundKey, nonce_seq: N) -> Self {
-        // UnboundKey is moved — can't be used for both sealing AND opening
-        SealingKey { key, nonce_seq }
-    }
-
-    pub fn seal_in_place_append_tag(
-        &mut self,       // &mut — exclusive access
-        aad: Aad<&[u8]>,
-        in_out: &mut Vec<u8>,
-    ) -> Result<(), Unspecified> {
-        let nonce = self.nonce_seq.advance()?; // auto-generate unique nonce
-        // ... encrypt with nonce ...
-        Ok(())
-    }
-}
-# pub struct UnboundKey;
-# pub struct Aad<T>(T);
-# pub struct Unspecified;
-```
-
-The ownership chain prevents:
-1. **Nonce reuse** — `Nonce` is not `Clone`, consumed on each call
-2. **Key duplication** — `UnboundKey` is moved into `SealingKey`, can't also make an `OpeningKey`
-3. **Sequence duplication** — `NonceSequence` is not `Clone`, so no two keys share a counter
-
-**None of these require runtime checks.** The compiler enforces all three.
-
-## Case Study: Ephemeral Key Agreement
-
-Ephemeral Diffie-Hellman keys must be used **exactly once** (that's what "ephemeral" means).
-`ring` enforces this:
+서버 플랫폼에는 보안 키, 시리얼 번호 등을 저장하는 **일회성 프로그래밍 가능(OTP) 퓨즈**가 있습니다. 퓨즈 쓰기는 되돌릴 수 없으며, 서로 다른 데이터로 두 번 쓰려고 하면 하드웨어가 영구적으로 손상(Brick)될 수 있습니다.
 
 ```rust,ignore
-/// An ephemeral private key. Not Clone, not Copy.
-/// Consumed by agree_ephemeral().
-pub struct EphemeralPrivateKey { /* ... */ }
-
-/// Compute shared secret — consumes the private key.
-pub fn agree_ephemeral(
-    my_private_key: EphemeralPrivateKey,  // ← moved
-    peer_public_key: &UnparsedPublicKey,
-    error_value: Unspecified,
-    kdf: impl FnOnce(&[u8]) -> Result<SharedSecret, Unspecified>,
-) -> Result<SharedSecret, Unspecified> {
-    // ... DH computation ...
-    // my_private_key is consumed — can never be reused
-    # kdf(&[])
-}
-# pub struct UnparsedPublicKey;
-# pub struct SharedSecret;
-# pub struct Unspecified;
-```
-
-After calling `agree_ephemeral()`, the private key **no longer exists in memory**
-(it's been dropped). A C++ developer would need to remember to `memset(key, 0, len)`
-and hope the compiler doesn't optimise it away. In Rust, the key is simply gone.
-
-## Hardware Application: One-Time Fuse Programming
-
-Server platforms have **OTP (one-time programmable) fuses** for security keys,
-board serial numbers, and feature bits. Writing a fuse is irreversible — doing it
-twice with different data bricks the board. This is a perfect fit for move semantics:
-
-```rust,ignore
-use std::io;
-
-/// A fuse write payload. Not Clone, not Copy.
-/// Consumed when the fuse is programmed.
+/// 퓨즈 쓰기 페이로드. Clone/Copy 불가.
 pub struct FusePayload {
     address: u32,
     data: Vec<u8>,
-    // private constructor — only created via validated builder
-}
-
-/// Proof that the fuse programmer is in the correct state.
-pub struct FuseController {
-    /* hardware handle */
 }
 
 impl FuseController {
-    /// Program a fuse — consumes the payload, preventing double-write.
+    /// 퓨즈를 프로그래밍함 — 페이로드를 소비하여 중복 쓰기를 방지함.
     pub fn program(
         &mut self,
-        payload: FusePayload,  // ← moved — can't be used twice
+        payload: FusePayload,  // ← 이동(Move) — 두 번 사용할 수 없음
     ) -> io::Result<()> {
-        // ... write to OTP hardware ...
-        // payload is consumed — trying to program again with the same
-        // payload is a compile error
+        // ... 하드웨어에 쓰기 수행 ...
+        // payload가 소비되었으므로, 같은 payload로 다시 시도하면 컴파일 에러
         Ok(())
     }
 }
-
-/// Builder with validation — only way to create a FusePayload.
-pub struct FusePayloadBuilder {
-    address: Option<u32>,
-    data: Option<Vec<u8>>,
-}
-
-impl FusePayloadBuilder {
-    pub fn new() -> Self {
-        FusePayloadBuilder { address: None, data: None }
-    }
-
-    pub fn address(mut self, addr: u32) -> Self {
-        self.address = Some(addr);
-        self
-    }
-
-    pub fn data(mut self, data: Vec<u8>) -> Self {
-        self.data = Some(data);
-        self
-    }
-
-    pub fn build(self) -> Result<FusePayload, &'static str> {
-        let address = self.address.ok_or("address required")?;
-        let data = self.data.ok_or("data required")?;
-        if data.len() > 32 { return Err("fuse data too long"); }
-        Ok(FusePayload { address, data })
-    }
-}
-
-// Usage:
-fn program_board_serial(ctrl: &mut FuseController) -> io::Result<()> {
-    let payload = FusePayloadBuilder::new()
-        .address(0x100)
-        .data(b"SN12345678".to_vec())
-        .build()
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-
-    ctrl.program(payload)?;      // ✅ payload consumed
-
-    // ctrl.program(payload);    // ❌ ERROR: use of moved value
-    //              ^^^^^^^ value used after move
-
-    Ok(())
-}
 ```
-
-## Hardware Application: Single-Use Calibration Token
-
-Some sensors require a calibration step that must happen **exactly once** per power
-cycle. A calibration token enforces this:
-
-```rust,ignore
-/// Issued once at power-on. Not Clone, not Copy.
-pub struct CalibrationToken {
-    _private: (),
-}
-
-pub struct SensorController {
-    calibrated: bool,
-}
-
-impl SensorController {
-    /// Called once at power-on — returns a calibration token.
-    pub fn power_on() -> (Self, CalibrationToken) {
-        (
-            SensorController { calibrated: false },
-            CalibrationToken { _private: () },
-        )
-    }
-
-    /// Calibrate the sensor — consumes the token.
-    pub fn calibrate(&mut self, _token: CalibrationToken) -> io::Result<()> {
-        // ... run calibration sequence ...
-        self.calibrated = true;
-        Ok(())
-    }
-
-    /// Read a sensor — only meaningful after calibration.
-    ///
-    /// **Limitation:** The move-semantics guarantee is *partial*. The caller
-    /// can `drop(cal_token)` without calling `calibrate()` — the token will
-    /// be destroyed but calibration won't run. The `#[must_use]` annotation
-    /// (see below) generates a warning but not a hard error.
-    ///
-    /// The runtime `self.calibrated` check here is the **safety net** for
-    /// that gap. For a fully compile-time solution, see the type-state
-    /// pattern in ch05 where `send_command()` only exists on `IpmiSession<Active>`.
-    pub fn read(&self) -> io::Result<f64> {
-        if !self.calibrated {
-            return Err(io::Error::new(io::ErrorKind::Other, "not calibrated"));
-        }
-        Ok(25.0) // stub
-    }
-}
-
-fn sensor_workflow() -> io::Result<()> {
-    let (mut ctrl, cal_token) = SensorController::power_on();
-
-    // Must use cal_token somewhere — it's not Copy, so dropping it
-    // without consuming it generates a warning (or error with #[must_use])
-    ctrl.calibrate(cal_token)?;
-
-    // Now reads work:
-    let temp = ctrl.read()?;
-    println!("Temperature: {temp}°C");
-
-    // Can't calibrate again — token was consumed:
-    // ctrl.calibrate(cal_token);  // ❌ use of moved value
-
-    Ok(())
-}
-```
-
-### When to Use Single-Use Types
-
-| Scenario | Use single-use (move) semantics? |
-|----------|:------:|
-| Cryptographic nonces | ✅ Always — nonce reuse is catastrophic |
-| Ephemeral keys (DH, ECDH) | ✅ Always — reuse weakens forward secrecy |
-| OTP fuse writes | ✅ Always — double-write bricks hardware |
-| License activation codes | ✅ Usually — prevent double-activation |
-| Calibration tokens | ✅ Usually — enforce once-per-session |
-| File write handles | ⚠️ Sometimes — depends on protocol |
-| Database transaction handles | ⚠️ Sometimes — commit/rollback is single-use |
-| General data buffers | ❌ These need reuse — use `&mut [u8]` |
-
-## Single-Use Ownership Flow
-
-```mermaid
-flowchart LR
-    N["Nonce::new()"] -->|move| E["encrypt(nonce, msg)"]
-    E -->|consumed| X["❌ nonce gone"]
-    N -.->|"reuse attempt"| ERR["COMPILE ERROR:\nuse of moved value"]
-    style N fill:#e1f5fe,color:#000
-    style E fill:#c8e6c9,color:#000
-    style X fill:#ffcdd2,color:#000
-    style ERR fill:#ffcdd2,color:#000
-```
-
-## Exercise: Single-Use Firmware Signing Token
-
-Design a `SigningToken` that can be used exactly once to sign a firmware image:
-- `SigningToken::issue(key_id: &str) -> SigningToken` (not Clone, not Copy)
-- `sign(token: SigningToken, image: &[u8]) -> SignedImage` (consumes the token)
-- Attempting to sign twice should be a compile error.
-
-<details>
-<summary>Solution</summary>
-
-```rust,ignore
-pub struct SigningToken {
-    key_id: String,
-    // NOT Clone, NOT Copy
-}
-
-pub struct SignedImage {
-    pub signature: Vec<u8>,
-    pub key_id: String,
-}
-
-impl SigningToken {
-    pub fn issue(key_id: &str) -> Self {
-        SigningToken { key_id: key_id.to_string() }
-    }
-}
-
-pub fn sign(token: SigningToken, _image: &[u8]) -> SignedImage {
-    // Token consumed by move — can't be reused
-    SignedImage {
-        signature: vec![0xDE, 0xAD],  // stub
-        key_id: token.key_id,
-    }
-}
-
-// ✅ Compiles:
-// let tok = SigningToken::issue("release-key");
-// let signed = sign(tok, &firmware_bytes);
-//
-// ❌ Compile error:
-// let signed2 = sign(tok, &other_bytes);  // ERROR: use of moved value
-```
-
-</details>
-
-## Key Takeaways
-
-1. **Move = linear use** — a non-Clone, non-Copy type can be consumed exactly once; the compiler enforces this.
-2. **Nonce reuse is catastrophic** — Rust's ownership system prevents it structurally, not by discipline.
-3. **Pattern applies beyond crypto** — OTP fuses, calibration tokens, audit entries — anything that must happen at most once.
-4. **Ephemeral keys get forward secrecy for free** — the key agreement value is moved into the derived secret and vanishes.
-5. **When in doubt, remove `Clone`** — you can always add it later; removing it from a published API is a breaking change.
 
 ---
+
+### 단회용 타입 사용 가이드
+
+| 시나리오 | 단회용(이동) 의미론 권장 여부 |
+|----------|:------:|
+| 암호학적 논스(Nonce) | ✅ **무조건** — 재사용 시 보안 파괴 |
+| 임시 키 합의 (DH, ECDH) | ✅ **무조건** — 재사용 시 순방향 비밀성 약화 |
+| OTP 퓨즈 쓰기 | ✅ **무조건** — 중복 쓰기 시 하드웨어 손상 |
+| 라이선스 활성화 코드 | ✅ **대체로** — 중복 활성화 방지 |
+| 캘리브레이션 토큰 | ✅ **대체로** — 세션당 한 번의 조정 강제 |
+| 데이터 버퍼 | ❌ 재사용이 필수적이므로 `&mut [u8]` 사용 |
+
+---
+
+### 핵심 요약
+
+1. **이동 = 단회 사용** — `Clone`이나 `Copy`가 없는 타입은 정확히 한 번만 소비될 수 있으며, 컴파일러가 이를 강제합니다.
+2. **패턴의 확장성** — 이 패턴은 암호학을 넘어 OTP 퓨즈, 캘리브레이션 토큰, 감사 로그 엔트리 등 "최대 한 번만 발생해야 하는" 모든 로직에 적용됩니다.
+3. **순방향 비밀성(Forward Secrecy)** — 임시 키가 파생된 비밀값으로 이동된 후 메모리에서 즉시 사라지므로 보안이 강화됩니다.
+4. **의심스러울 땐 Clone을 빼라** — 나중에 추가하는 것은 쉽지만, 공개된 API에서 `Clone`을 제거하는 것은 파괴적인 변경(Breaking change)입니다.
 

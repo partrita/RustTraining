@@ -1,146 +1,45 @@
-# Rust for Python Programmers: Complete Training Guide
+# 파이썬 개발자를 위한 Rust: 실무 트레이닝 가이드
 
-A comprehensive guide to learning Rust for developers with Python experience. This guide
-covers everything from basic syntax to advanced patterns, focusing on the conceptual shifts
-required when moving from a dynamically-typed, garbage-collected language to a statically-typed
-systems language with compile-time memory safety.
-
-## How to Use This Book
-
-**Self-study format**: Work through Part I (ch 1–6) first — these map closely to Python concepts you already know. Part II (ch 7–12) introduces Rust-specific ideas like ownership and traits. Part III (ch 13–16) covers advanced topics and migration.
-
-**Pacing recommendations:**
-
-| Chapters | Topic | Suggested Time | Checkpoint |
-|----------|-------|---------------|------------|
-| 1–4 | Setup, types, control flow | 1 day | You can write a CLI temperature converter in Rust |
-| 5–6 | Data structures, enums, pattern matching | 1–2 days | You can define an enum with data and `match` exhaustively on it |
-| 7 | Ownership and borrowing | 1–2 days | You can explain *why* `let s2 = s1` invalidates `s1` |
-| 8–9 | Modules, error handling | 1 day | You can create a multi-file project that propagates errors with `?` |
-| 10–12 | Traits, generics, closures, iterators | 1–2 days | You can translate a list comprehension to an iterator chain |
-| 13 | Concurrency | 1 day | You can write a thread-safe counter with `Arc<Mutex<T>>` |
-| 14 | Unsafe, PyO3, testing | 1 day | You can call a Rust function from Python via PyO3 |
-| 15–16 | Migration, best practices | At your own pace | Reference material — consult as you write real code |
-| 17 | Capstone project | 2–3 days | Build a complete CLI app tying everything together |
-
-**How to use the exercises:**
-- Chapters include hands-on exercises in collapsible `<details>` blocks with solutions
-- **Always try the exercise before expanding the solution.** Struggling with the borrow checker is part of learning — the compiler's error messages are your teacher
-- If you're stuck for more than 15 minutes, expand the solution, study it, then close it and try again from scratch
-- The [Rust Playground](https://play.rust-lang.org/) lets you run code without a local install
-
-**Difficulty indicators:**
-- 🟢 **Beginner** — Direct translation from Python concepts
-- 🟡 **Intermediate** — Requires understanding ownership or traits
-- 🔴 **Advanced** — Lifetimes, async internals, or unsafe code
-
-**When you hit a wall:**
-- Read the compiler error message carefully — Rust's errors are exceptionally helpful
-- Re-read the relevant section; concepts like ownership (ch7) often click on the second pass
-- The [Rust standard library docs](https://doc.rust-lang.org/std/) are excellent — search for any type or method
-- For deeper async patterns, see the companion [Async Rust Training](../async-book/)
+> **학습 목표:** 파이썬 개발 환경에서 쌓은 경험을 바탕으로 Rust를 빠르고 정확하게 습득합니다. 동적 타이핑과 가비지 컬렉션(GC)에 익숙한 사고방식을 컴파일 타임 메모리 안전성과 정적 타이핑 중심의 시스템 언어적 사고방식으로 전환하는 데 집중합니다.
 
 ---
 
-## Table of Contents
+### 📘 이 책을 활용하는 방법
+본 가이드는 파이썬의 익숙한 개념을 Rust의 대응 개념과 대조하며 학습하도록 설계되었습니다.
 
-### Part I — Foundations
-
-#### 1. Introduction and Motivation 🟢
-- [The Case for Rust for Python Developers](ch01-introduction-and-motivation.md#the-case-for-rust-for-python-developers)
-- [Common Python Pain Points That Rust Addresses](ch01-introduction-and-motivation.md#common-python-pain-points-that-rust-addresses)
-- [When to Choose Rust Over Python](ch01-introduction-and-motivation.md#when-to-choose-rust-over-python)
-
-#### 2. Getting Started 🟢
-- [Installation and Setup](ch02-getting-started.md#installation-and-setup)
-- [Your First Rust Program](ch02-getting-started.md#your-first-rust-program)
-- [Cargo vs pip/Poetry](ch02-getting-started.md#cargo-vs-pippoetry)
-
-#### 3. Built-in Types and Variables 🟢
-- [Variables and Mutability](ch03-built-in-types-and-variables.md#variables-and-mutability)
-- [Primitive Types Comparison](ch03-built-in-types-and-variables.md#primitive-types-comparison)
-- [String Types: String vs &str](ch03-built-in-types-and-variables.md#string-types-string-vs-str)
-
-#### 4. Control Flow 🟢
-- [Conditional Statements](ch04-control-flow.md#conditional-statements)
-- [Loops and Iteration](ch04-control-flow.md#loops-and-iteration)
-- [Expression Blocks](ch04-control-flow.md#expression-blocks)
-- [Functions and Type Signatures](ch04-control-flow.md#functions-and-type-signatures)
-
-#### 5. Data Structures and Collections 🟢
-- [Tuples, Arrays, Slices](ch05-data-structures-and-collections.md#tuples-and-destructuring)
-- [Structs vs Classes](ch05-data-structures-and-collections.md#structs-vs-classes)
-- [Vec vs list, HashMap vs dict](ch05-data-structures-and-collections.md#vec-vs-list)
-
-#### 6. Enums and Pattern Matching 🟡
-- [Algebraic Data Types vs Union Types](ch06-enums-and-pattern-matching.md#algebraic-data-types-vs-union-types)
-- [Exhaustive Pattern Matching](ch06-enums-and-pattern-matching.md#exhaustive-pattern-matching)
-- [Option for None Safety](ch06-enums-and-pattern-matching.md#option-for-none-safety)
-
-### Part II — Core Concepts
-
-#### 7. Ownership and Borrowing 🟡
-- [Understanding Ownership](ch07-ownership-and-borrowing.md#understanding-ownership)
-- [Move Semantics vs Reference Counting](ch07-ownership-and-borrowing.md#move-semantics-vs-reference-counting)
-- [Borrowing and Lifetimes](ch07-ownership-and-borrowing.md#borrowing-and-lifetimes)
-- [Smart Pointers](ch07-ownership-and-borrowing.md#smart-pointers)
-
-#### 8. Crates and Modules 🟢
-- [Rust Modules vs Python Packages](ch08-crates-and-modules.md#rust-modules-vs-python-packages)
-- [Crates vs PyPI Packages](ch08-crates-and-modules.md#crates-vs-pypi-packages)
-
-#### 9. Error Handling 🟡
-- [Exceptions vs Result](ch09-error-handling.md#exceptions-vs-result)
-- [The ? Operator](ch09-error-handling.md#the--operator)
-- [Custom Error Types with thiserror](ch09-error-handling.md#custom-error-types-with-thiserror)
-
-#### 10. Traits and Generics 🟡
-- [Traits vs Duck Typing](ch10-traits-and-generics.md#traits-vs-duck-typing)
-- [Protocols (PEP 544) vs Traits](ch10-traits-and-generics.md#protocols-pep-544-vs-traits)
-- [Generic Constraints](ch10-traits-and-generics.md#generic-constraints)
-
-#### 11. From and Into Traits 🟡
-- [Type Conversions in Rust](ch11-from-and-into-traits.md#type-conversions-in-rust)
-- [From, Into, TryFrom](ch11-from-and-into-traits.md#rust-frominto)
-- [String Conversion Patterns](ch11-from-and-into-traits.md#string-conversions)
-
-#### 12. Closures and Iterators 🟡
-- [Closures vs Lambdas](ch12-closures-and-iterators.md#rust-closures-vs-python-lambdas)
-- [Iterators vs Generators](ch12-closures-and-iterators.md#iterators-vs-generators)
-- [Macros: Code That Writes Code](ch12-closures-and-iterators.md#why-macros-exist-in-rust)
-
-### Part III — Advanced Topics & Migration
-
-#### 13. Concurrency 🔴
-- [No GIL: True Parallelism](ch13-concurrency.md#no-gil-true-parallelism)
-- [Thread Safety: Type System Guarantees](ch13-concurrency.md#thread-safety-type-system-guarantees)
-- [async/await Comparison](ch13-concurrency.md#asyncawait-comparison)
-
-#### 14. Unsafe Rust, FFI, and Testing 🔴
-- [When and Why to Use Unsafe](ch14-unsafe-rust-and-ffi.md#when-and-why-to-use-unsafe)
-- [PyO3: Rust Extensions for Python](ch14-unsafe-rust-and-ffi.md#pyo3-rust-extensions-for-python)
-- [Unit Tests vs pytest](ch14-unsafe-rust-and-ffi.md#unit-tests-vs-pytest)
-
-#### 15. Migration Patterns 🟡
-- [Common Python Patterns in Rust](ch15-migration-patterns.md#common-python-patterns-in-rust)
-- [Essential Crates for Python Developers](ch08-crates-and-modules.md#essential-crates-for-python-developers)
-- [Incremental Adoption Strategy](ch15-migration-patterns.md#incremental-adoption-strategy)
-
-#### 16. Best Practices 🟡
-- [Idiomatic Rust for Python Developers](ch16-best-practices.md#idiomatic-rust-for-python-developers)
-- [Common Pitfalls and Solutions](ch16-best-practices.md#common-pitfalls-and-solutions)
-- [Python→Rust Rosetta Stone](ch16-best-practices.md#rosetta-stone-python-to-rust)
-- [Learning Path and Resources](ch16-best-practices.md#learning-path-and-resources)
+- **1부 (1~6장)**: 파이썬 개념과 유사한 기초 문법 (변수, 제어 흐름, 데이터 구조)
+- **2부 (7~12장)**: Rust만의 핵심 개념 (소유권, 빌림, 트레이트, 제네릭)
+- **3부 (13~16장)**: 심화 주제 및 파생 기술 (동시성, PyO3를 통한 연동, 마이그레이션)
+- **4부 (17장)**: 캡스톤 프로젝트 (CLI 할 일 관리 도구 제작)
 
 ---
 
-### Part IV — Capstone
+### 🚀 추천 학습 일정
 
-#### 17. Capstone Project: CLI Task Manager 🔴
-- [The Project: `rustdo`](ch17-capstone-project.md#the-project-rustdo)
-- [Data Model, Storage, Commands, Business Logic](ch17-capstone-project.md#step-1-define-the-data-model-ch-3-6-10-11)
-- [Tests and Stretch Goals](ch17-capstone-project.md#step-7-tests-ch-14)
+| **단계** | **주요 주제** | **목표 포인트** |
+| :--- | :--- | :--- |
+| **1~4장** | 설정 및 기초 문법 | 간단한 단위 변환 CLI 도구를 작성할 수 있음 |
+| **5~6장** | 데이터 구조 및 패턴 매치 | 열거형(Enum)과 `match`를 사용해 안전한 로직 설계 가능 |
+| **7장** | **소유권과 빌림** | **핵심**: 왜 값이 이동(Move)하는지 원리를 완벽히 이해 |
+| **8~9장** | 모듈 및 에러 처리 | `?` 연산자를 활용해 예외 대신 Result로 에러 전파 가능 |
+| **10~12장** | 트레이트 및 반복자 | 파이썬의 리스트 컴프리헨션을 Rust 반복자 체인으로 변환 가능 |
+| **13장** | 동시성 제어 | `Arc<Mutex<T>>`를 사용해 스레드 안전한 코드 작성 가능 |
+| **14장** | PyO3 및 테스트 | **실전**: Rust로 작성한 함수를 파이썬에서 호출 가능 |
 
-***
+---
 
+### 💡 학습 팁
+1. **연습 문제를 직접 풀어보세요**: 각 장의 연습 문제는 접이식 메뉴 안에 정답과 함께 들어 있습니다. 먼저 직접 코드를 짜본 뒤 정답을 확인하세요.
+2. **컴파일러를 믿으세요**: Rust 컴파일러의 에러 메시지는 당신의 스승입니다. 에러가 나면 꼼꼼히 읽어보세요. 대부분의 해결책이 메시지 안에 들어 있습니다.
+3. **난이도 가이드**:
+   - 🟢 **초급**: 파이썬 지식으로 즉시 이해 가능
+   - 🟡 **중급**: 소유권이나 트레이트 등 Rust 고유 개념 이해 필요
+   - 🔴 **고급**: 수명(Lifetime), 비동기 내부 로직, Unsafe 코드 등 심화 주제
+
+---
+
+### 🛠️ 필수 도구 및 리소스
+- **[Rust Playground](https://play.rust-lang.org/)**: 브라우저에서 즉시 코드 실행
+- **[PyO3 문서](https://pyo3.rs/)**: Rust와 파이썬 연동을 위한 필수 라이브러리
+- **[Cargo](https://doc.rust-lang.org/cargo/)**: 빌드 및 패키지 관리 도구 (pip/poetry 대응)
 

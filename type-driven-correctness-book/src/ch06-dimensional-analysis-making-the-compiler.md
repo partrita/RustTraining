@@ -1,408 +1,110 @@
-# Dimensional Analysis — Making the Compiler Check Your Units 🟢
+# 6. 차원 분석 — 컴파일러가 단위를 검사하게 만들기 🟢
 
-> **What you'll learn:** How newtype wrappers and the `uom` crate turn the compiler into a unit-checking engine, preventing the class of bug that destroyed a $328M spacecraft.
+> **학습 목표:** 뉴타입(Newtype) 래퍼와 `uom` 크레이트가 어떻게 컴파일러를 단위 검사 엔진으로 변모시키는지 배웁니다. 이를 통해 수억 달러 규모의 우주선을 파괴했던 것과 같은 범주의 버그를 사전에 차단하는 법을 익힙니다.
 >
-> **Cross-references:** [ch02](ch02-typed-command-interfaces-request-determi.md) (typed commands use these types), [ch07](ch07-validated-boundaries-parse-dont-validate.md) (validated boundaries), [ch10](ch10-putting-it-all-together-a-complete-diagn.md) (integration)
+> **관련 장:** [02장](ch02-typed-command-interfaces-request-determi.md) (이 장의 타입을 사용하는 명령 인터페이스), [07장](ch07-validated-boundaries-parse-dont-validate.md) (유효성 검증 경계), [10장](ch10-putting-it-all-together-a-complete-diagn.md) (통합)
 
-## The Mars Climate Orbiter
+---
 
-In 1999, NASA's Mars Climate Orbiter was lost because one team sent thrust data in
-**pound-force seconds** while the navigation team expected **newton-seconds**. The
-spacecraft entered the atmosphere at 57 km instead of 226 km and disintegrated.
-Cost: $327.6 million.
+### 화성 기후 궤도선(Mars Climate Orbiter)의 교훈
 
-The root cause: **both values were `double`**. The compiler couldn't distinguish them.
+1999년, NASA의 화성 기후 궤도선은 한 팀이 추력 데이터를 **파운드-힘 초(lb·s)** 단위로 보냈는데, 제어 팀은 이를 **뉴턴-초(N·s)** 단위로 받아들이는 바람에 손실되었습니다. 우주선은 예정된 226km가 아닌 57km 고도에서 화성 대기권에 진입하여 공중 분해되었습니다.
 
-This same class of bug lurks in every hardware diagnostic that deals with physical
-quantities:
+이 버그의 근본 원인은 **두 값 모두 `double` 타입이었다**는 데 있습니다. 컴파일러는 두 단위를 구분할 수 없었습니다. 물리량을 다루는 모든 하드웨어 진단 도구에도 동일한 범주의 버그가 숨어 있습니다.
 
 ```c
-// C — all doubles, no unit checking
-double read_temperature(int sensor_id);   // Celsius? Fahrenheit? Kelvin?
-double read_voltage(int channel);          // Volts? Millivolts?
-double read_fan_speed(int fan_id);         // RPM? Radians per second?
-
-// Bug: comparing Celsius to Fahrenheit
-if (read_temperature(0) > read_temperature(1)) { ... }  // units might differ!
+// C — 모두 double 타입이며 단위 검사가 없음
+double read_temperature(int sensor_id);   // 섭씨? 화씨? 켈빈?
+double read_voltage(int channel);         // 볼트? 밀리볼트?
 ```
 
-## Newtypes for Physical Quantities
+---
 
-The simplest correct-by-construction approach: **wrap each unit in its own type**.
+### 물리량을 위한 뉴타입(Newtypes)
+
+가장 간단하고 확실한 '설계에 의한 올바름' 접근법은 **각 단위를 고유한 타입으로 감싸는 것**입니다.
 
 ```rust,ignore
-use std::fmt;
-
-/// Temperature in degrees Celsius.
+/// 섭씨 온도
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Celsius(pub f64);
 
-/// Temperature in degrees Fahrenheit.
+/// 화씨 온도
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Fahrenheit(pub f64);
 
-/// Voltage in volts.
+/// 전압 (볼트)
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Volts(pub f64);
 
-/// Voltage in millivolts.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Millivolts(pub f64);
-
-/// Fan speed in RPM.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Rpm(pub f64);
-
-// Conversions are explicit:
+// 명시적인 변환 구현:
 impl From<Celsius> for Fahrenheit {
-    fn from(c: Celsius) -> Self {
-        Fahrenheit(c.0 * 9.0 / 5.0 + 32.0)
-    }
-}
-
-impl From<Fahrenheit> for Celsius {
-    fn from(f: Fahrenheit) -> Self {
-        Celsius((f.0 - 32.0) * 5.0 / 9.0)
-    }
-}
-
-impl From<Volts> for Millivolts {
-    fn from(v: Volts) -> Self {
-        Millivolts(v.0 * 1000.0)
-    }
-}
-
-impl From<Millivolts> for Volts {
-    fn from(mv: Millivolts) -> Self {
-        Volts(mv.0 / 1000.0)
-    }
-}
-
-impl fmt::Display for Celsius {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:.1}°C", self.0)
-    }
-}
-
-impl fmt::Display for Rpm {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:.0} RPM", self.0)
-    }
+    fn from(c: Celsius) -> Self { Fahrenheit(c.0 * 9.0 / 5.0 + 32.0) }
 }
 ```
 
-Now the compiler catches unit mismatches:
+이제 컴파일러가 단위 불일치를 잡아냅니다.
 
 ```rust,ignore
-# #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-# pub struct Celsius(pub f64);
-# #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-# pub struct Volts(pub f64);
-
-fn check_thermal_limit(temp: Celsius, limit: Celsius) -> bool {
-    temp > limit  // ✅ same units — compiles
+fn check_limit(temp: Celsius, limit: Celsius) -> bool {
+    temp > limit  // ✅ 동일한 단위 — 컴파일 성공
 }
 
-// fn bad_comparison(temp: Celsius, voltage: Volts) -> bool {
-//     temp > voltage  // ❌ ERROR: mismatched types — Celsius vs Volts
+// fn bad_check(temp: Celsius, voltage: Volts) -> bool {
+//     temp > voltage  // ❌ 에러: 타입 불일치 (Celsius vs Volts)
 // }
 ```
 
-**Zero runtime cost** — newtypes compile down to raw `f64` values. The wrapper is
-purely a type-level concept.
-
-## Newtype Macro for Hardware Quantities
-
-Writing newtypes by hand gets repetitive. A macro eliminates the boilerplate:
-
-```rust,ignore
-/// Generate a newtype for a physical quantity.
-macro_rules! quantity {
-    ($Name:ident, $unit:expr) => {
-        #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-        pub struct $Name(pub f64);
-
-        impl $Name {
-            pub fn new(value: f64) -> Self { $Name(value) }
-            pub fn value(self) -> f64 { self.0 }
-        }
-
-        impl std::fmt::Display for $Name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{:.2} {}", self.0, $unit)
-            }
-        }
-
-        impl std::ops::Add for $Name {
-            type Output = Self;
-            fn add(self, rhs: Self) -> Self { $Name(self.0 + rhs.0) }
-        }
-
-        impl std::ops::Sub for $Name {
-            type Output = Self;
-            fn sub(self, rhs: Self) -> Self { $Name(self.0 - rhs.0) }
-        }
-    };
-}
-
-// Usage:
-quantity!(Celsius, "°C");
-quantity!(Fahrenheit, "°F");
-quantity!(Volts, "V");
-quantity!(Millivolts, "mV");
-quantity!(Rpm, "RPM");
-quantity!(Watts, "W");
-quantity!(Amperes, "A");
-quantity!(Pascals, "Pa");
-quantity!(Hertz, "Hz");
-quantity!(Bytes, "B");
-```
-
-Each line generates a complete type with Display, Add, Sub, and comparison operators.
-**All at zero runtime cost.**
-
-> **Physics caveat:** The macro generates `Add` for *all* quantities, including
-> `Celsius`. Adding absolute temperatures (`25°C + 30°C = 55°C`) is not
-> physically meaningful — you'd need a separate `TemperatureDelta` type for
-> differences. The `uom` crate (shown later) handles this correctly. For
-> simple sensor diagnostics where you only compare and display, you can omit
-> `Add`/`Sub` from temperature types and keep them for quantities where
-> addition makes sense (Watts, Volts, Bytes). If you need delta arithmetic,
-> define a `CelsiusDelta(f64)` newtype with `impl Add<CelsiusDelta> for Celsius`.
-
-## Applied Example: Sensor Pipeline
-
-A typical diagnostic reads raw ADC values, converts them to physical units, and
-compares against thresholds. With dimensional types, each step is type-checked:
-
-```rust,ignore
-# macro_rules! quantity {
-#     ($Name:ident, $unit:expr) => {
-#         #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-#         pub struct $Name(pub f64);
-#         impl $Name {
-#             pub fn new(value: f64) -> Self { $Name(value) }
-#             pub fn value(self) -> f64 { self.0 }
-#         }
-#         impl std::fmt::Display for $Name {
-#             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-#                 write!(f, "{:.2} {}", self.0, $unit)
-#             }
-#         }
-#     };
-# }
-# quantity!(Celsius, "°C");
-# quantity!(Volts, "V");
-# quantity!(Rpm, "RPM");
-
-/// Raw ADC reading — not yet a physical quantity.
-#[derive(Debug, Clone, Copy)]
-pub struct AdcReading {
-    pub channel: u8,
-    pub raw: u16,   // 12-bit ADC value (0–4095)
-}
-
-/// Calibration coefficients for converting ADC → physical unit.
-pub struct TemperatureCalibration {
-    pub offset: f64,
-    pub scale: f64,   // °C per ADC count
-}
-
-pub struct VoltageCalibration {
-    pub reference_mv: f64,
-    pub divider_ratio: f64,
-}
-
-impl TemperatureCalibration {
-    /// Convert raw ADC → Celsius. The return type guarantees the output is Celsius.
-    pub fn convert(&self, adc: AdcReading) -> Celsius {
-        Celsius::new(adc.raw as f64 * self.scale + self.offset)
-    }
-}
-
-impl VoltageCalibration {
-    /// Convert raw ADC → Volts. The return type guarantees the output is Volts.
-    pub fn convert(&self, adc: AdcReading) -> Volts {
-        Volts::new(adc.raw as f64 * self.reference_mv / 4096.0 / self.divider_ratio / 1000.0)
-    }
-}
-
-/// Threshold check — only compiles if units match.
-pub struct Threshold<T: PartialOrd> {
-    pub warning: T,
-    pub critical: T,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum ThresholdResult {
-    Normal,
-    Warning,
-    Critical,
-}
-
-impl<T: PartialOrd> Threshold<T> {
-    pub fn check(&self, value: &T) -> ThresholdResult {
-        if *value >= self.critical {
-            ThresholdResult::Critical
-        } else if *value >= self.warning {
-            ThresholdResult::Warning
-        } else {
-            ThresholdResult::Normal
-        }
-    }
-}
-
-fn sensor_pipeline_example() {
-    let temp_cal = TemperatureCalibration { offset: -50.0, scale: 0.0625 };
-    let temp_threshold = Threshold {
-        warning: Celsius::new(85.0),
-        critical: Celsius::new(100.0),
-    };
-
-    let adc = AdcReading { channel: 0, raw: 2048 };
-    let temp: Celsius = temp_cal.convert(adc);
-
-    let result = temp_threshold.check(&temp);
-    println!("Temperature: {temp}, Status: {result:?}");
-
-    // This won't compile — can't check a Celsius reading against a Volts threshold:
-    // let volt_threshold = Threshold {
-    //     warning: Volts::new(11.4),
-    //     critical: Volts::new(10.8),
-    // };
-    // volt_threshold.check(&temp);  // ❌ ERROR: expected &Volts, found &Celsius
-}
-```
-
-The **entire pipeline** is statically type-checked:
-- ADC readings are raw counts (not units)
-- Calibration produces typed quantities (Celsius, Volts)
-- Thresholds are generic over the quantity type
-- Comparing Celsius against Volts is a **compile error**
-
-## The uom Crate
-
-For production use, the [`uom`](https://crates.io/crates/uom) crate provides
-a comprehensive dimensional analysis system with hundreds of units, automatic
-conversion, and zero runtime overhead:
-
-```rust,ignore
-// Cargo.toml: uom = { version = "0.36", features = ["f64"] }
-//
-// use uom::si::f64::*;
-// use uom::si::thermodynamic_temperature::degree_celsius;
-// use uom::si::electric_potential::volt;
-// use uom::si::power::watt;
-//
-// let temp = ThermodynamicTemperature::new::<degree_celsius>(85.0);
-// let voltage = ElectricPotential::new::<volt>(12.0);
-// let power = Power::new::<watt>(250.0);
-//
-// // temp + voltage;  // ❌ compile error — can't add temperature to voltage
-// // power > temp;    // ❌ compile error — can't compare power to temperature
-```
-
-Use `uom` when you need automatic derived-unit support (e.g., Watts = Volts × Amperes).
-Use hand-rolled newtypes when you need only simple quantities without derived-unit
-arithmetic.
-
-### When to Use Dimensional Types
-
-| Scenario | Recommendation |
-|----------|---------------|
-| Sensor readings (temp, voltage, fan) | ✅ Always — prevents unit confusion |
-| Threshold comparisons | ✅ Always — generic `Threshold<T>` |
-| Cross-subsystem data exchange | ✅ Always — enforce contracts at API boundaries |
-| Internal calculations (same unit throughout) | ⚠️ Optional — less bug-prone |
-| String/display formatting | ❌ Use Display impl on the quantity type |
-
-## Sensor Pipeline Type Flow
-
-```mermaid
-flowchart LR
-    RAW["raw: &[u8]"] -->|parse| C["Celsius(f64)"]
-    RAW -->|parse| R["Rpm(u32)"]
-    RAW -->|parse| V["Volts(f64)"]
-    C -->|threshold check| TC["Threshold<Celsius>"]
-    R -->|threshold check| TR["Threshold<Rpm>"]
-    C -.->|"C + R"| ERR["❌ mismatched types"]
-    style RAW fill:#e1f5fe,color:#000
-    style C fill:#c8e6c9,color:#000
-    style R fill:#fff3e0,color:#000
-    style V fill:#e8eaf6,color:#000
-    style TC fill:#c8e6c9,color:#000
-    style TR fill:#fff3e0,color:#000
-    style ERR fill:#ffcdd2,color:#000
-```
-
-## Exercise: Power Budget Calculator
-
-Create `Watts(f64)` and `Amperes(f64)` newtypes. Implement:
-- `Watts::from_vi(volts: Volts, amps: Amperes) -> Watts` (P = V × I)
-- A `PowerBudget` that tracks total watts and rejects additions that exceed a configured limit.
-- Attempting `Watts + Celsius` should be a compile error.
-
-<details>
-<summary>Solution</summary>
-
-```rust,ignore
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Watts(pub f64);
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Amperes(pub f64);
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Volts(pub f64);
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Celsius(pub f64);
-
-impl Watts {
-    pub fn from_vi(volts: Volts, amps: Amperes) -> Self {
-        Watts(volts.0 * amps.0)
-    }
-}
-
-impl std::ops::Add for Watts {
-    type Output = Watts;
-    fn add(self, rhs: Watts) -> Watts {
-        Watts(self.0 + rhs.0)
-    }
-}
-
-pub struct PowerBudget {
-    total: Watts,
-    limit: Watts,
-}
-
-impl PowerBudget {
-    pub fn new(limit: Watts) -> Self {
-        PowerBudget { total: Watts(0.0), limit }
-    }
-    pub fn add(&mut self, w: Watts) -> Result<(), String> {
-        let new_total = Watts(self.total.0 + w.0);
-        if new_total > self.limit {
-            return Err(format!("budget exceeded: {:?} > {:?}", new_total, self.limit));
-        }
-        self.total = new_total;
-        Ok(())
-    }
-}
-
-// ❌ Compile error: Watts + Celsius → "mismatched types"
-// let bad = Watts(100.0) + Celsius(50.0);
-```
-
-</details>
-
-## Key Takeaways
-
-1. **Newtypes prevent unit confusion at zero cost** — `Celsius` and `Rpm` are both `f64` inside, but the compiler treats them as different types.
-2. **The Mars Climate Orbiter bug is impossible** — passing `Pounds` where `Newtons` is expected is a compile error.
-3. **`quantity!` macro reduces boilerplate** — stamp out Display, arithmetic, and threshold logic for each unit.
-4. **`uom` crate handles derived units** — use it when you need `Watts = Volts × Amperes` automatically.
-5. **Threshold is generic over the quantity** — `Threshold<Celsius>` can't accidentally compare to `Threshold<Rpm>`.
+**런타임 비용은 제로**입니다. 뉴타입은 컴파일된 바이너리에서 원시 `f64` 값으로 존재합니다. 래퍼는 오직 타입 시스템상의 개념일 뿐입니다.
 
 ---
+
+### 센서 파이프라인 적용 예시
+
+원시 ADC 값을 읽어 물리 단위로 변환하고 임계값과 비교하는 전 과정을 타입 수준에서 검사할 수 있습니다.
+
+```rust,ignore
+/// ADC 읽기 — 아직 물리량이 아님
+pub struct AdcReading { pub channel: u8, pub raw: u16 }
+
+pub struct TempCal { pub scale: f64, pub offset: f64 }
+
+impl TempCal {
+    /// 원시 ADC 값을 Celsius로 변환. 반환 타입이 Celsius임을 보장함.
+    pub fn convert(&self, adc: AdcReading) -> Celsius {
+        Celsius(adc.raw as f64 * self.scale + self.offset)
+    }
+}
+
+/// 임계값 검사 — 단위가 일치할 때만 컴파일됨
+pub struct Threshold<T: PartialOrd> { pub warning: T, pub critical: T }
+
+impl<T: PartialOrd> Threshold<T> {
+    pub fn check(&self, value: &T) -> bool { *value >= self.critical }
+}
+```
+
+이제 `Threshold<Celsius>`에 `Volts` 값을 전달하려고 하면 컴파일러가 즉시 오류를 발생시킵니다. 섭씨와 볼트를 비교하는 논리적 실수는 더 이상 발생할 수 없습니다.
+
+---
+
+### uom 크레이트 활용
+
+실제 운영 환경에서는 [`uom`](https://crates.io/crates/uom) 크레이트를 사용하는 것이 좋습니다. 수백 개의 단위를 지원하며, 자동 단위 변환 및 유도 단위(예: Watt = Volt × Ampere) 계산을 **런타임 오버헤드 없이** 제공합니다.
+
+```rust,ignore
+// uom 사용 예시 (의사 코드)
+let temp = Celsius::new(85.0);
+let volt = Volts::new(12.0);
+// temp + volt; // ❌ 컴파일 에러 — 온드와 전압은 더할 수 없음
+```
+
+---
+
+### 핵심 요약
+
+1. **뉴타입은 비용 없이 혼동을 방지함** — `Celsius`와 `Rpm`은 내부적으로 같은 `f64`지만, 컴파일러는 이를 완전히 다른 타입으로 취급합니다.
+2. **우주선 손실 버그의 원천 차단** — `Pounds`를 기대하는 곳에 `Newtons`를 전달하는 실수는 이제 컴파일 에러입니다.
+3. **제네릭 임계값 검사** — `Threshold<T>` 패턴을 통해 모든 물리량에 대해 재사용 가능하면서도 타입 안전한 검사 로직을 구현할 수 있습니다.
+4. **uom 크레이트** — 복잡한 유도 단위와 산술 연산이 필요할 때 매우 강력한 도구입니다.
 

@@ -1,144 +1,138 @@
-# Release Profiles and Binary Size 🟡
+# 릴리스 프로필 및 바이너리 크기 🟡
 
-> **What you'll learn:**
-> - Release profile anatomy: LTO, codegen-units, panic strategy, strip, opt-level
-> - Thin vs Fat vs Cross-Language LTO trade-offs
-> - Binary size analysis with `cargo-bloat`
-> - Dependency trimming with `cargo-udeps`, `cargo-machete` and `cargo-shear`
+> **학습 내용:**
+> - 릴리스 프로필 분석: LTO, codegen-units, panic 전략, strip, opt-level
+> - Thin vs Fat vs 교차 언어 LTO 트레이드오프
+> - `cargo-bloat`을 이용한 바이너리 크기 분석
+> - `cargo-udeps`, `cargo-machete`, `cargo-shear`를 이용한 의존성 정리
 >
-> **Cross-references:** [Compile-Time Tools](ch08-compile-time-and-developer-tools.md) — the other half of optimization · [Benchmarking](ch03-benchmarking-measuring-what-matters.md) — measure runtime before you optimize · [Dependencies](ch06-dependency-management-and-supply-chain-s.md) — trimming deps reduces both size and compile time
+> **교차 참조:** [컴파일 타임 도구](ch08-compile-time-and-developer-tools.md) — 최적화의 나머지 절반 · [벤치마킹](ch03-benchmarking-measuring-what-matters.md) — 최적화 전 실행 시간 측정 · [의존성](ch06-dependency-management-and-supply-chain-s.md) — 의존성 정리는 크기와 컴파일 시간을 모두 줄임
 
-The default `cargo build --release` is already good. But for production
-deployment — especially single-binary tools deployed to thousands of servers —
-there's a significant gap between "good" and "optimized." This chapter covers
-the profile knobs and the tools to measure binary size.
+기본적인 `cargo build --release` 설정도 이미 훌륭합니다. 하지만 운영 환경 배포 — 특히 수천 대의 서버에 배포되는 단일 바이너리 도구의 경우 — "좋음"과 "최적화됨" 사이에는 상당한 차이가 있습니다. 이 장에서는 프로필의 설정값들과 바이너리 크기를 측정하는 도구들을 다룹니다.
 
-### Release Profile Anatomy
+### 릴리스 프로필 분석
 
-Cargo profiles control how `rustc` compiles your code. The defaults are
-conservative — designed for broad compatibility, not maximum performance:
+Cargo 프로필은 `rustc`가 코드를 컴파일하는 방식을 제어합니다. 기본값은 보수적으로 설정되어 있어, 최대 성능보다는 광범위한 호환성을 위해 설계되었습니다.
 
 ```toml
-# Cargo.toml — Cargo's built-in defaults (what you get if you specify nothing)
+# Cargo.toml — Cargo의 내장 기본값 (아무것도 지정하지 않았을 때의 상태)
 
 [profile.release]
-opt-level = 3        # Optimization level (0=none, 1=basic, 2=good, 3=aggressive)
-lto = false          # Link-time optimization OFF
-codegen-units = 16   # Parallel compilation units (faster compile, less optimization)
-panic = "unwind"     # Stack unwinding on panic (larger binary, catch_unwind works)
-strip = "none"       # Keep all symbols and debug info
-overflow-checks = false  # No integer overflow checks in release
-debug = false        # No debug info in release
+opt-level = 3        # 최적화 수준 (0=없음, 1=기본, 2=좋음, 3=공격적)
+lto = false          # 링크 타임 최적화(LTO) 꺼짐
+codegen-units = 16   # 병렬 컴파일 유닛 (컴파일은 빠르지만 최적화 기회는 적음)
+panic = "unwind"     # 패닉 시 스택 되감기 (바이너리는 커지지만 catch_unwind 작동 가능)
+strip = "none"       # 모든 심볼 및 디버그 정보 유지
+overflow-checks = false  # 릴리스 빌드에서 정수 오버플로 검사 안 함
+debug = false        # 릴리스 빌드에서 디버그 정보 제외
 ```
 
-**Production-optimized profile** (what the project already uses):
+**운영 환경에 최적화된 프로필** (이 프로젝트에서 이미 사용 중인 설정):
 
 ```toml
 [profile.release]
-lto = true           # Full cross-crate optimization
-codegen-units = 1    # Single codegen unit — maximum optimization opportunity
-panic = "abort"      # No unwinding overhead — smaller, faster
-strip = true         # Remove all symbols — smaller binary
+lto = true           # 전체 크레이트 간 최적화 활성화
+codegen-units = 1    # 단일 코드 생성 유닛 — 최적화 기회 최대화
+panic = "abort"      # 되감기 오버헤드 제거 — 더 작고 빠름
+strip = true         # 모든 심볼 제거 — 바이너리 크기 감소
 ```
 
-**The impact of each setting:**
+**각 설정의 영향:**
 
-| Setting | Default → Optimized | Binary Size | Runtime Speed | Compile Time |
+| 설정 | 기본값 → 최적화 | 바이너리 크기 | 실행 속도 | 컴파일 시간 |
 |---------|---------------------|-------------|---------------|--------------|
-| `lto = false → true` | — | -10 to -20% | +5 to +20% | 2-5× slower |
-| `codegen-units = 16 → 1` | — | -5 to -10% | +5 to +10% | 1.5-2× slower |
-| `panic = "unwind" → "abort"` | — | -5 to -10% | Negligible | Negligible |
-| `strip = "none" → true` | — | -50 to -70% | None | None |
-| `opt-level = 3 → "s"` | — | -10 to -30% | -5 to -10% | Similar |
-| `opt-level = 3 → "z"` | — | -15 to -40% | -10 to -20% | Similar |
+| `lto = false → true` | — | -10 ~ -20% | +5 ~ +20% | 2-5배 느림 |
+| `codegen-units = 16 → 1` | — | -5 ~ -10% | +5 ~ +10% | 1.5-2배 느림 |
+| `panic = "unwind" → "abort"` | — | -5 ~ -10% | 무시할 수 있음 | 무시할 수 있음 |
+| `strip = "none" → true` | — | -50 ~ -70% | 영향 없음 | 영향 없음 |
+| `opt-level = 3 → "s"` | — | -10 ~ -30% | -5 ~ -10% | 비슷함 |
+| `opt-level = 3 → "z"` | — | -15 ~ -40% | -10 ~ -20% | 비슷함 |
 
-**Additional profile tweaks:**
+**추가적인 프로필 미세 조정:**
 
 ```toml
 [profile.release]
-# All of the above, plus:
-overflow-checks = true    # Keep overflow checks even in release (safety > speed)
-debug = "line-tables-only" # Minimal debug info for backtraces without full DWARF
-rpath = false             # Don't embed runtime library paths
-incremental = false       # Disable incremental compilation (cleaner builds)
+# 위의 모든 설정에 더해:
+overflow-checks = true    # 릴리스에서도 오버플로 검사 유지 (속도보다 안전)
+debug = "line-tables-only" # 전체 DWARF 없이 백트레이스를 위한 최소한의 디버그 정보
+rpath = false             # 런타임 라이브러리 경로를 포함하지 않음
+incremental = false       # 증분 컴파일 비활성화 (더 깨끗한 빌드)
 
-# For size-optimized builds (embedded, WASM):
-# opt-level = "z"         # Optimize for size aggressively
-# strip = "symbols"       # Strip symbols but keep debug sections
+# 크기 최적화 빌드용 (임베디드, WASM):
+# opt-level = "z"         # 공격적인 크기 최적화
+# strip = "symbols"       # 심볼은 제거하되 디버그 섹션은 유지
 ```
 
-**Per-crate profile overrides** — optimize hot crates, leave others alone:
+**크레이트별 프로필 오버라이드** — 중요한 크레이트만 최적화하고 나머지는 그대로 두기:
 
 ```toml
-# Dev builds: optimize dependencies but not your code (fast recompile)
+# 개발 빌드: 의존성은 최적화하되 내 코드는 빠르게 리컴파일
 [profile.dev.package."*"]
-opt-level = 2          # Optimize all dependencies in dev mode
+opt-level = 2          # 개발 모드에서도 모든 의존성 최적화
 
-# Release builds: override specific crate optimization
+# 릴리스 빌드: 특정 크레이트의 최적화 설정 변경
 [profile.release.package.serde_json]
-opt-level = 3          # Maximum optimization for JSON parsing
+opt-level = 3          # JSON 파싱 최적화 최대화
 codegen-units = 1
 
-# Test profile: match release behavior for accurate integration tests
+# 테스트 프로필: 정확한 통합 테스트를 위해 릴리스 동작과 일치시킴
 [profile.test]
-opt-level = 1          # Some optimization to avoid timeout in slow tests
+opt-level = 1          # 느린 테스트에서 타임아웃을 방지하기 위한 최소한의 최적화
 ```
 
-### LTO in Depth — Thin vs Fat vs Cross-Language
+### LTO 심층 분석 — Thin vs Fat vs 교차 언어
 
-Link-Time Optimization lets LLVM optimize across crate boundaries — inlining
-functions from `serde_json` into your parsing code, removing dead code from
-`regex`, etc. Without LTO, each crate is a separate optimization island.
+링크 타임 최적화(LTO)를 사용하면 LLVM이 크레이트 경계를 넘어 최적화를 수행할 수 있습니다. 예를 들어 `serde_json`의 함수를 파싱 코드에 인라이닝하거나, `regex`에서 사용되지 않는 코드를 제거하는 등의 작업이 가능합니다. LTO가 없으면 각 크레이트는 독립된 최적화 섬과 같습니다.
 
 ```toml
 [profile.release]
-# Option 1: Fat LTO (default when lto = true)
+# 옵션 1: Fat LTO (lto = true일 때의 기본값)
 lto = true
-# All code merged into one LLVM module → maximum optimization
-# Slowest compile, smallest/fastest binary
+# 모든 코드를 하나의 LLVM 모듈로 병합 → 최적화 극대화
+# 컴파일은 가장 느리지만, 가장 작고 빠른 바이너리 생성
 
-# Option 2: Thin LTO
+# 옵션 2: Thin LTO
 lto = "thin"
-# Each crate stays separate but LLVM does cross-module optimization
-# Faster compile than fat LTO, nearly as good optimization
-# Best trade-off for most projects
+# 크레이트는 분리된 상태를 유지하되 LLVM이 모듈 간 최적화 수행
+# Fat LTO보다 컴파일이 빠르며 최적화 효과도 거의 비슷함
+# 대부분의 프로젝트에 가장 권장되는 트레이드오프
 
-# Option 3: No LTO
+# 옵션 3: LTO 없음
 lto = false
-# Only intra-crate optimization
-# Fastest compile, larger binary
+# 크레이트 내부에서만 최적화 수행
+# 컴파일이 가장 빠르지만 바이너리가 커짐
 
-# Option 4: Off (explicit)
+# 옵션 4: Off (명시적)
 lto = "off"
-# Same as false
+# false와 동일함
 ```
 
 **Fat LTO vs Thin LTO:**
 
-| Aspect | Fat LTO (`true`) | Thin LTO (`"thin"`) |
+| 요인 | Fat LTO (`true`) | Thin LTO (`"thin"`) |
 |--------|-------------------|----------------------|
-| Optimization quality | Best | ~95% of fat |
-| Compile time | Slow (all code in one module) | Moderate (parallel modules) |
-| Memory usage | High (all LLVM IR in memory) | Lower (streaming) |
-| Parallelism | None (single module) | Good (per-module) |
-| Recommended for | Final release builds | CI builds, development |
+| 최적화 품질 | 최고 | Fat의 약 95% 수준 |
+| 컴파일 시간 | 느림 (모든 코드가 한 모듈에 있음) | 보통 (병렬 모듈 처리) |
+| 메모리 사용량 | 높음 (모든 LLVM IR을 메모리에 로드) | 낮음 (스트리밍 방식) |
+| 병렬성 | 없음 (단일 모듈) | 좋음 (모듈별 처리) |
+| 권장 용도 | 최종 릴리스 빌드 | CI 빌드, 개발 단계 |
 
-**Cross-language LTO** — optimize across Rust and C boundaries:
+**교차 언어 LTO** — Rust와 C 경계를 넘나드는 최적화:
 
 ```toml
 [profile.release]
 lto = true
 
-# Cargo.toml — for crates using the cc crate
+# cc 크레이트를 사용하는 크레이트의 Cargo.toml
 [build-dependencies]
 cc = "1.0"
 ```
 
 ```rust
-// build.rs — enable cross-language (linker-plugin) LTO
+// build.rs — 교차 언어(linker-plugin) LTO 활성화
 fn main() {
-    // The cc crate respects CFLAGS from the environment.
-    // For cross-language LTO, compile C code with:
+    // cc 크레이트는 환경 변수의 CFLAGS를 따릅니다.
+    // 교차 언어 LTO를 위해 C 코드를 다음 설정으로 컴파일합니다:
     //   -flto=thin -O2
     cc::Build::new()
         .file("csrc/fast_parser.c")
@@ -149,36 +143,34 @@ fn main() {
 ```
 
 ```bash
-# Enable linker-plugin LTO (requires compatible LLD or gold linker)
+# linker-plugin LTO 활성화 (호환 가능한 LLD 또는 gold 링커 필요)
 RUSTFLAGS="-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld" \
     cargo build --release
 ```
 
-Cross-language LTO allows LLVM to inline C functions into Rust callers
-and vice versa. This is most impactful for FFI-heavy code where small C
-functions are called frequently (e.g., IPMI ioctl wrappers).
+교차 언어 LTO를 통해 LLVM은 C 함수를 Rust 호출부로 인라이닝하거나 그 반대의 작업을 수행할 수 있습니다. 이는 작은 C 함수가 빈번하게 호출되는 FFI 비중이 높은 코드(예: IPMI ioctl 래퍼)에서 가장 큰 효과를 발휘합니다.
 
-### Binary Size Analysis with cargo-bloat
+### cargo-bloat을 이용한 바이너리 크기 분석
 
-[`cargo-bloat`](https://github.com/RazrFalcon/cargo-bloat) answers:
-"What functions and crates are taking up the most space in my binary?"
+[`cargo-bloat`](https://github.com/RazrFalcon/cargo-bloat)은 다음 질문에 답해줍니다:
+"내 바이너리에서 어떤 함수와 크레이트가 가장 많은 공간을 차지하고 있는가?"
 
 ```bash
-# Install
+# 설치
 cargo install cargo-bloat
 
-# Show largest functions
+# 가장 큰 함수들 표시
 cargo bloat --release -n 20
-# Output:
+# 출력 예시:
 #  File  .text     Size          Crate    Name
 #  2.8%   5.1%  78.5KiB  serde_json       serde_json::de::Deserializer::parse_...
 #  2.1%   3.8%  58.2KiB  regex_syntax     regex_syntax::ast::parse::ParserI::p...
 #  1.5%   2.7%  42.1KiB  accel_diag         accel_diag::vendor::parse_smi_output
 #  ...
 
-# Show by crate (which dependencies are biggest)
+# 크레이트별 표시 (어떤 의존성이 가장 큰지 확인)
 cargo bloat --release --crates
-# Output:
+# 출력 예시:
 #  File  .text     Size Crate
 # 12.3%  22.1%  340KiB serde_json
 #  8.7%  15.6%  240KiB regex
@@ -186,81 +178,80 @@ cargo bloat --release --crates
 #  5.1%   9.2%  141KiB accel_diag
 #  ...
 
-# Compare two builds (before/after optimization)
+# 두 빌드 결과 비교 (최적화 전후)
 cargo bloat --release --crates > before.txt
-# ... make changes ...
+# ... 변경 작업 수행 ...
 cargo bloat --release --crates > after.txt
 diff before.txt after.txt
 ```
 
-**Common bloat sources and fixes:**
+**흔한 비대화 원인 및 해결책:**
 
-| Bloat Source | Typical Size | Fix |
+| 원인 | 일반적인 크기 | 해결책 |
 |-------------|-------------|-----|
-| `regex` (full engine) | 200-400 KB | Use `regex-lite` if you don't need Unicode |
-| `serde_json` (full) | 200-350 KB | Consider `simd-json` or `sonic-rs` if perf matters |
-| Generics monomorphization | Varies | Use `dyn Trait` at API boundaries |
-| Formatting machinery (`Display`, `Debug`) | 50-150 KB | `#[derive(Debug)]` on large enums adds up |
-| Panic message strings | 20-80 KB | `panic = "abort"` removes unwinding, `strip` removes strings |
-| Unused features | Varies | Disable default features: `serde = { version = "1", default-features = false }` |
+| `regex` (전체 엔진) | 200-400 KB | 유니코드가 필요 없다면 `regex-lite` 사용 |
+| `serde_json` (전체) | 200-350 KB | 성능이 중요하다면 `simd-json` 또는 `sonic-rs` 고려 |
+| 제네릭 단일화 (Monomorphization) | 다양함 | API 경계에서 `dyn Trait` 사용 |
+| 포맷팅 엔진 (`Display`, `Debug`) | 50-150 KB | 거대한 enum의 `#[derive(Debug)]`는 크기를 키움 |
+| 패닉 메시지 문자열 | 20-80 KB | `panic = "abort"`는 되감기를 제거하고, `strip`은 문자열 제거 |
+| 미사용 기능(Feature) | 다양함 | 기본 기능 비활성화: `serde = { version = "1", default-features = false }` |
 
-### Trimming Dependencies with cargo-udeps
+### cargo-udeps를 이용한 의존성 정리
 
-[`cargo-udeps`](https://github.com/est31/cargo-udeps) finds dependencies
-declared in `Cargo.toml` that your code doesn't actually use:
+[`cargo-udeps`](https://github.com/est31/cargo-udeps)는 `Cargo.toml`에는 선언되어 있지만 실제 코드에서는 사용되지 않는 의존성을 찾아줍니다.
 
 ```bash
-# Install (requires nightly)
+# 설치 (nightly 채널 필요)
 cargo install cargo-udeps
 
-# Find unused dependencies
+# 사용되지 않는 의존성 찾기
 cargo +nightly udeps --workspace
-# Output:
+# 출력 예시:
 # unused dependencies:
 # `diag_tool v0.1.0`
 # └── "tempfile" (dev-dependency)
 #
 # `accel_diag v0.1.0`
-# └── "once_cell"    ← was needed before LazyLock, now dead
+# └── "once_cell"    ← LazyLock 도입 전에는 필요했으나 지금은 사용 안 함
 ```
 
-Every unused dependency:
-- Increases compile time
-- Increases binary size
-- Adds supply chain risk
-- Adds potential license complications
+사용되지 않는 의존성은 다음과 같은 문제를 일으킵니다:
+- 컴파일 시간 증가
+- 바이너리 크기 증가
+- 공급망 보안 위험 증가
+- 잠재적인 라이선스 복잡성 추가
 
-**Alternative: `cargo-machete`** — faster, heuristic-based approach:
+**대안: `cargo-machete`** — 휴리스틱 기반의 빠른 방식:
 
 ```bash
 cargo install cargo-machete
 cargo machete
-# Faster but may have false positives (heuristic, not compilation-based)
+# 빠르지만 휴리스틱 방식이라 오탐(false positive)이 있을 수 있음
 ```
 
-**Alternative: `cargo-shear`** — sweet spot between `cargo-udeps` and `cargo-machete`:
+**대안: `cargo-shear`** — `cargo-udeps`와 `cargo-machete` 사이의 절충안:
 
 ```bash
 cargo install cargo-shear
 cargo shear --fix
-# Slower than cargo-machete but much faster than cargo-udeps
-# Much less false positives than cargo-machete
+# cargo-machete보다 느리지만 cargo-udeps보다는 훨씬 빠름
+# cargo-machete보다 오탐이 훨씬 적음
 ```
 
-### Size Optimization Decision Tree
+### 크기 최적화 의사결정 트리
 
 ```mermaid
 flowchart TD
-    START["Binary too large?"] --> STRIP{"strip = true?"}
-    STRIP -->|"No"| DO_STRIP["Add strip = true\n-50 to -70% size"]
-    STRIP -->|"Yes"| LTO{"LTO enabled?"}
-    LTO -->|"No"| DO_LTO["Add lto = true\ncodegen-units = 1"]
-    LTO -->|"Yes"| BLOAT["Run cargo-bloat\n--crates"]
-    BLOAT --> BIG_DEP{"Large dependency?"}
-    BIG_DEP -->|"Yes"| REPLACE["Replace with lighter\nalternative or disable\ndefault features"]
-    BIG_DEP -->|"No"| UDEPS["cargo-udeps\nRemove unused deps"]
-    UDEPS --> OPT_LEVEL{"Need smaller?"}
-    OPT_LEVEL -->|"Yes"| SIZE_OPT["opt-level = 's' or 'z'"]
+    START["바이너리가 너무 큰가?"] --> STRIP{"strip = true 설정됨?"}
+    STRIP -->|"아니요"| DO_STRIP["strip = true 추가\n크기 -50 ~ -70%"]
+    STRIP -->|"예"| LTO{"LTO 활성화됨?"}
+    LTO -->|"아니요"| DO_LTO["lto = true 및\ncodegen-units = 1 추가"]
+    LTO -->|"예"| BLOAT["cargo-bloat --crates 실행"]
+    BLOAT --> BIG_DEP{"거대한 의존성이 있는가?"}
+    BIG_DEP -->|"예"| REPLACE["더 가벼운 대안으로 교체하거나\n기본 기능(feature) 비활성화"]
+    BIG_DEP -->|"아니요"| UDEPS["cargo-udeps 실행\n미사용 의존성 제거"]
+    UDEPS --> OPT_LEVEL{"더 줄여야 하는가?"}
+    OPT_LEVEL -->|"예"| SIZE_OPT["opt-level = 's' 또는 'z' 설정"]
 
     style DO_STRIP fill:#91e5a3,color:#000
     style DO_LTO fill:#e3f2fd,color:#000
@@ -268,22 +259,22 @@ flowchart TD
     style SIZE_OPT fill:#ff6b6b,color:#000
 ```
 
-### 🏋️ Exercises
+### 🏋️ 실습
 
-#### 🟢 Exercise 1: Measure LTO Impact
+#### 🟢 실습 1: LTO 영향력 측정
 
-Build a project with default release settings, then with `lto = true` + `codegen-units = 1` + `strip = true`. Compare binary size and compile time.
+기본 릴리스 설정으로 프로젝트를 빌드한 후, `lto = true` + `codegen-units = 1` + `strip = true` 설정을 적용하여 다시 빌드해 보세요. 바이너리 크기와 컴파일 시간을 비교해 봅니다.
 
 <details>
-<summary>Solution</summary>
+<summary>솔루션</summary>
 
 ```bash
-# Default release
+# 기본 릴리스 빌드
 cargo build --release
 ls -lh target/release/my-binary
-time cargo build --release  # Note time
+time cargo build --release  # 시간 기록
 
-# Optimized release — add to Cargo.toml:
+# 최적화된 릴리스 — Cargo.toml에 추가:
 # [profile.release]
 # lto = true
 # codegen-units = 1
@@ -292,42 +283,42 @@ time cargo build --release  # Note time
 
 cargo clean
 cargo build --release
-ls -lh target/release/my-binary  # Typically 30-50% smaller
-time cargo build --release       # Typically 2-3× slower to compile
+ls -lh target/release/my-binary  # 보통 30-50% 작아짐
+time cargo build --release       # 보통 컴파일이 2-3배 느려짐
 ```
 </details>
 
-#### 🟡 Exercise 2: Find Your Biggest Crate
+#### 🟡 실습 2: 가장 큰 크레이트 찾기
 
-Run `cargo bloat --release --crates` on a project. Identify the largest dependency. Can you reduce it by disabling default features or switching to a lighter alternative?
+프로젝트에서 `cargo bloat --release --crates`를 실행해 보세요. 가장 큰 의존성을 확인합니다. 기본 기능을 비활성화하거나 더 가벼운 대안으로 교체하여 크기를 줄일 수 있을까요?
 
 <details>
-<summary>Solution</summary>
+<summary>솔루션</summary>
 
 ```bash
 cargo install cargo-bloat
 cargo bloat --release --crates
-# Output:
+# 출력 예시:
 #  File  .text     Size Crate
 # 12.3%  22.1%  340KiB serde_json
 #  8.7%  15.6%  240KiB regex
 
-# For regex — try regex-lite if you don't need Unicode:
-# regex-lite = "0.1"  # ~10× smaller than full regex
+# regex의 경우 — 유니코드가 필요 없다면 regex-lite 시도:
+# regex-lite = "0.1"  # 전체 regex보다 약 10배 작음
 
-# For serde — disable default features if you don't need std:
+# serde의 경우 — std가 필요 없다면 기본 기능 비활성화:
 # serde = { version = "1", default-features = false, features = ["derive"] }
 
-cargo bloat --release --crates  # Compare after changes
+cargo bloat --release --crates  # 변경 후 결과 비교
 ```
 </details>
 
-### Key Takeaways
+### 핵심 요약
 
-- `lto = true` + `codegen-units = 1` + `strip = true` + `panic = "abort"` is the production release profile
-- Thin LTO (`lto = "thin"`) gives 80% of Fat LTO's benefit at a fraction of the compile cost
-- `cargo-bloat --crates` tells you exactly which dependencies are eating binary space
-- `cargo-udeps`, `cargo-machete` and `cargo-shear` find dead dependencies that waste compile time and binary size
-- Per-crate profile overrides let you optimize hot crates without slowing the whole build
+- `lto = true` + `codegen-units = 1` + `strip = true` + `panic = "abort"`는 운영 환경용 릴리스 프로필의 표준입니다.
+- Thin LTO (`lto = "thin"`)는 Fat LTO의 장점의 80%를 제공하면서도 컴파일 비용은 훨씬 적습니다.
+- `cargo-bloat --crates`는 어떤 의존성이 바이너리 공간을 차지하는지 정확히 알려줍니다.
+- `cargo-udeps`, `cargo-machete`, `cargo-shear`는 컴파일 시간과 바이너리 크기를 낭비하는 죽은 의존성을 찾아줍니다.
+- 크레이트별 프로필 오버라이드를 통해 전체 빌드를 느리게 하지 않고도 중요한 크레이트만 최적화할 수 있습니다.
 
 ---

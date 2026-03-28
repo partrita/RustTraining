@@ -1,344 +1,78 @@
-## 함수(Function) vs 메서드(Method)
+# 제어 흐름: 함수와 표현식 핵심 가이드
 
-> **학습 목표:** Rust와 C#의 함수 및 메서드를 비교하고, 표현식(Expression)과 문(Statement)의 핵심적인 차이를 이해합니다. `if`, `match`, `loop`, `while`, `for` 구문을 익히며, Rust의 표현식 중심 설계가 어떻게 삼항 연산자를 대체하는지 배웁니다.
->
-> **난이도:** 🟢 초급
+> **학습 목표:** Rust의 함수 정의 방식과 C#의 메서드를 비교하고, Rust의 가장 특징적인 설계인 **표현식(Expression) 기반 문법**을 마스터합니다. 이를 통해 `if`나 `match` 구문이 어떻게 삼항 연산자를 대체하고 더 안전한 코드를 만드는지 배웁니다.
 
-### C# 함수 선언
-```csharp
-// C# - 클래스 내의 메서드
-public class Calculator
-{
-    // 인스턴스 메서드
-    public int Add(int a, int b)
-    {
-        return a + b;
-    }
-    
-    // 정적(Static) 메서드
-    public static int Multiply(int a, int b)
-    {
-        return a * b;
-    }
-    
-    // ref 매개변수를 가진 메서드
-    public void Increment(ref int value)
-    {
-        value++;
-    }
-}
-```
+---
 
-### Rust 함수 선언
+### 1. 함수와 메서드
+C#과 달리 Rust는 클래스에 소속되지 않은 **독립 함수(Standalone function)**를 자유롭게 정의할 수 있습니다.
+
+| **비교 항목** | **C# 스타일** | **Rust 스타일** |
+| :--- | :--- | :--- |
+| **선언 위치** | 클래스 내부에 정의 (메서드) | 파일 어디서나 정의 가능 (함수) |
+| **인자 전달** | `ref`, `out`, `in` | `&`, `&mut` (참조 및 빌림) |
+| **반환 방식** | `return` 키워드 필수 | 마지막 줄의 표현식이 자동으로 반환됨 |
+| **정적 메서드** | `static` 키워드 사용 | `impl` 블록 내에서 `self` 인자 없이 선언 |
+
 ```rust
-// Rust - 독립 함수(Standalone function)
+// [명시적 return 없이 반환하는 예시]
 fn add(a: i32, b: i32) -> i32 {
-    a + b  // 마지막 표현식에는 'return'이 필요 없습니다.
-}
-
-fn multiply(a: i32, b: i32) -> i32 {
-    return a * b;  // 명시적으로 return을 사용해도 괜찮습니다.
-}
-
-// 가변 참조를 사용하는 함수
-fn increment(value: &mut i32) {
-    *value += 1;
-}
-
-fn main() {
-    let result = add(5, 3);
-    println!("5 + 3 = {}", result);
-    
-    let mut x = 10;
-    increment(&mut x);
-    println!("증가 후: {}", x);
+    a + b  // 세미콜론이 없으면 '표현식'으로서 값을 반환합니다.
 }
 ```
 
-### 표현식(Expression) vs 문(Statement) (중요!)
+---
 
-```mermaid
-graph LR
-    subgraph "C# — 문(Statements)"
-        CS1["if (cond)"] --> CS2["return 42;"]
-        CS1 --> CS3["return 0;"]
-        CS2 --> CS4["return을 통해 값 반환"]
-        CS3 --> CS4
-    end
-    subgraph "Rust — 표현식(Expressions)"
-        RS1["if cond"] --> RS2["42  (세미콜론 없음)"]
-        RS1 --> RS3["0  (세미콜론 없음)"]
-        RS2 --> RS4["코드 블록 자체가 값임"]
-        RS3 --> RS4
-    end
+### 2. 표현식(Expression) vs 문(Statement)
+C# 개발자가 Rust에서 처음 직면하는 가장 큰 차이점입니다. Rust에서는 거의 모든 블록이 **값을 반환하는 표현식**이 될 수 있습니다.
 
-    style CS4 fill:#bbdefb,color:#000
-    style RS4 fill:#c8e6c9,color:#000
+- **문(Statement)**: 작업을 수행하지만 값을 내놓지 않습니다. 끝에 `;`가 붙습니다.
+- **표현식(Expression)**: 결과값을 산출합니다. 끝에 `;`를 붙이지 않습니다.
+
+```rust
+// [C# 스타일 (삼항 연산자)]
+// var message = x > 10 ? "큼" : "작음";
+
+// [Rust 스타일 (if 표현식)]
+let message = if x > 10 { "큼" } else { "작음" }; // if 블록 자체가 값을 반환
 ```
 
-```csharp
-// C# - 문 vs 표현식
-public int GetValue()
-{
-    if (condition)
-    {
-        return 42;  // 문(Statement)
+---
+
+### 3. 반복문과 루프 제어
+Rust는 C#의 `foreach`와 `while` 외에도 유용한 루프 구문을 제공합니다.
+
+- **`for .. in`**: 반복자(Iterator)를 순회합니다. C#의 `foreach`와 유사하지만 더 강력합니다. (`0..5`와 같은 범위 지정 가능)
+- **`while`**: 조건이 참인 동안 반복합니다.
+- **`loop`**: 무한 루프입니다. 값을 계산하고 `break`를 통해 루프 밖으로 결과를 내보낼 때 매우 유용합니다.
+
+```rust
+// 루프에서 직접 값 반환하기
+let result = loop {
+    let val = get_next_value();
+    if val > 100 {
+        break val; // 루프를 종료하며 값을 result에 대입
     }
-    return 0;       // 문(Statement)
-}
-```
-
-```rust
-// Rust - 모든 것이 표현식이 될 수 있음
-fn get_value(condition: bool) -> i32 {
-    if condition {
-        42  // 표현식 (세미콜론 없음)
-    } else {
-        0   // 표현식 (세미콜론 없음)
-    }
-    // if-else 블록 자체가 값을 반환하는 표현식입니다.
-}
-
-// 더 간단하게 표현하면
-fn get_value_ternary(condition: bool) -> i32 {
-    if condition { 42 } else { 0 }
-}
-```
-
-### 함수 매개변수와 반환 타입
-```rust
-// 매개변수와 반환값이 없음 (유닛 타입 () 반환)
-fn say_hello() {
-    println!("안녕하세요!");
-}
-
-// 여러 매개변수
-fn greet(name: &str, age: u32) {
-    println!("{}님은 {}살입니다", name, age);
-}
-
-// 튜플을 사용한 다중 반환값
-fn divide_and_remainder(dividend: i32, divisor: i32) -> (i32, i32) {
-    (dividend / divisor, dividend % divisor)
-}
-
-fn main() {
-    let (quotient, remainder) = divide_and_remainder(10, 3);
-    println!("10 ÷ 3 = {} 나머지 {}", quotient, remainder);
-}
-```
-
-***
-
-## 제어 흐름 기초
-
-### 조건문
-```csharp
-// C# if 문
-int x = 5;
-if (x > 10)
-{
-    Console.WriteLine("큰 수");
-}
-else if (x > 5)
-{
-    Console.WriteLine("중간 수");
-}
-else
-{
-    Console.WriteLine("작은 수");
-}
-
-// C# 삼항 연산자
-string message = x > 10 ? "큼" : "작음";
-```
-
-```rust
-// Rust if 표현식
-let x = 5;
-if x > 10 {
-    println!("큰 수");
-} else if x > 5 {
-    println!("중간 수");
-} else {
-    println!("작은 수");
-}
-
-// 표현식으로서의 Rust if (삼항 연산자 대체)
-let message = if x > 10 { "큼" } else { "작음" };
-
-// 다중 조건 표현식
-let message = if x > 10 {
-    "큼"
-} else if x > 5 {
-    "중간"
-} else {
-    "작음"
 };
 ```
 
-### 루프(Loops)
-```csharp
-// C# 루프
-// For 루프
-for (int i = 0; i < 5; i++)
-{
-    Console.WriteLine(i);
-}
+---
 
-// Foreach 루프
-var numbers = new[] { 1, 2, 3, 4, 5 };
-foreach (var num in numbers)
-{
-    Console.WriteLine(num);
-}
-
-// While 루프
-int count = 0;
-while (count < 3)
-{
-    Console.WriteLine(count);
-    count++;
-}
-```
+### 4. 루프 라벨 (Nested Loops)
+중첩된 루프에서 바깥쪽 루프를 한 번에 탈출해야 할 때, C#은 `goto`나 플래그 변수를 써야 했지만 Rust는 **라벨**을 지원합니다.
 
 ```rust
-// Rust 루프
-// 범위 기반 for 루프
-for i in 0..5 {  // 0부터 4까지 (마지막 값 제외)
-    println!("{}", i);
-}
-
-// 컬렉션 반복
-let numbers = vec![1, 2, 3, 4, 5];
-for num in numbers {  // 소유권이 이동됨
-    println!("{}", num);
-}
-
-// 참조 반복 (더 일반적인 방식)
-let numbers = vec![1, 2, 3, 4, 5];
-for num in &numbers {  // 요소를 빌려옴
-    println!("{}", num);
-}
-
-// While 루프
-let mut count = 0;
-while count < 3 {
-    println!("{}", count);
-    count += 1;
-}
-
-// break를 사용한 무한 루프
-let mut counter = 0;
-loop {
-    if counter >= 3 {
-        break;
-    }
-    println!("{}", counter);
-    counter += 1;
-}
-```
-
-### 루프 제어
-```csharp
-// C# 루프 제어
-for (int i = 0; i < 10; i++)
-{
-    if (i == 3) continue;
-    if (i == 7) break;
-    Console.WriteLine(i);
-}
-```
-
-```rust
-// Rust 루프 제어
-for i in 0..10 {
-    if i == 3 { continue; }
-    if i == 7 { break; }
-    println!("{}", i);
-}
-
-// 루프 라벨 (중첩 루프용)
-'outer: for i in 0..3 {
-    'inner: for j in 0..3 {
-        if i == 1 && j == 1 {
-            break 'outer;  // 바깥쪽 루프 탈출
+'outer: for x in 0..10 {
+    for y in 0..10 {
+        if x + y > 15 {
+            break 'outer; // 'outer' 라벨이 붙은 루프를 탈출
         }
-        println!("i: {}, j: {}", i, j);
     }
 }
 ```
 
-***
+---
 
+### 💡 실무 팁: 세미콜론의 마법
+함수 마지막 줄에 세미콜론을 찍느냐 마느냐는 사소해 보이지만 의미가 큽니다. 세미콜론을 찍으면 "이 줄에서 작업을 끝낸다(반환값 없음)"는 뜻이고, 찍지 않으면 "이 계산 결과를 반환한다"는 뜻이 됩니다. 이것만 잘 구분해도 많은 컴파일 에러를 예방할 수 있습니다.
 
-<details>
-<summary><strong>🏋️ 실습: 온도 변환기</strong> (펼치기)</summary>
-
-**도전 과제**: 다음 C# 프로그램을 관용적인 Rust 코드로 변환해 보세요. 표현식, 패턴 매칭, 적절한 에러 핸들링을 활용하세요.
-
-```csharp
-// C# — 이를 Rust로 변환하세요
-public static double Convert(double value, string from, string to)
-{
-    double celsius = from switch
-    {
-        "F" => (value - 32.0) * 5.0 / 9.0,
-        "K" => value - 273.15,
-        "C" => value,
-        _ => throw new ArgumentException($"알 수 없는 단위: {from}")
-    };
-    return to switch
-    {
-        "F" => celsius * 9.0 / 5.0 + 32.0,
-        "K" => celsius + 273.15,
-        "C" => celsius,
-        _ => throw new ArgumentException($"알 수 없는 단위: {to}")
-    };
-}
-```
-
-<details>
-<summary>🔑 해답</summary>
-
-```rust
-#[derive(Debug, Clone, Copy)]
-enum TempUnit { Celsius, Fahrenheit, Kelvin }
-
-fn parse_unit(s: &str) -> Result<TempUnit, String> {
-    match s {
-        "C" => Ok(TempUnit::Celsius),
-        "F" => Ok(TempUnit::Fahrenheit),
-        "K" => Ok(TempUnit::Kelvin),
-        _   => Err(format!("알 수 없는 단위: {s}")),
-    }
-}
-
-fn convert(value: f64, from: TempUnit, to: TempUnit) -> f64 {
-    let celsius = match from {
-        TempUnit::Fahrenheit => (value - 32.0) * 5.0 / 9.0,
-        TempUnit::Kelvin     => value - 273.15,
-        TempUnit::Celsius    => value,
-    };
-    match to {
-        TempUnit::Fahrenheit => celsius * 9.0 / 5.0 + 32.0,
-        TempUnit::Kelvin     => celsius + 273.15,
-        TempUnit::Celsius    => celsius,
-    }
-}
-
-fn main() -> Result<(), String> {
-    let from = parse_unit("F")?;
-    let to   = parse_unit("C")?;
-    println!("212°F = {:.1}°C", convert(212.0, from, to));
-    Ok(())
-}
-```
-
-**핵심 포인트**:
-- 매직 문자열 대신 열거형(Enum) 사용 — 철저한 매칭을 통해 누락된 단위를 컴파일 타임에 포착합니다.
-- 예외 대신 `Result<T, E>` 사용 — 호출자는 함수 시그니처를 통해 발생 가능한 실패를 인지할 수 있습니다.
-- `match`는 값을 반환하는 표현식임 — 별도의 `return` 문이 필요 없습니다.
-
-</details>
-</details>

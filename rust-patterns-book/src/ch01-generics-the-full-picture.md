@@ -1,14 +1,16 @@
-# 1. Generics — The Full Picture 🟢
+# 1. 제네릭의 모든 것 🟢
 
-> **What you'll learn:**
-> - How monomorphization gives zero-cost generics — and when it causes code bloat
-> - The decision framework: generics vs enums vs trait objects
-> - Const generics for compile-time array sizes and `const fn` for compile-time evaluation
-> - When to trade static dispatch for dynamic dispatch on cold paths
+> **학습 목표:**
+> - **단형성화(Monomorphization)**가 어떻게 제로 비용 제네릭을 구현하는지, 그리고 언제 **코드 팽창(Code Bloat)**을 일으키는지 이해합니다.
+> - 의사 결정 프레임워크: 제네릭 vs 열거형 vs 트레이트 객체의 선택 기준을 익힙니다.
+> - 컴파일 타임 배열 크기를 위한 **상수 제네릭(Const Generics)**과 컴파일 타임 연산을 위한 **`const fn`**을 배웁니다.
+> - 성능이 중요하지 않은 경로(Cold path)에서 정적 디스패치 대신 동적 디스패치를 선택하는 시점을 파악합니다.
 
-## Monomorphization and Zero Cost
+---
 
-Generics in Rust are **monomorphized** — the compiler generates a specialized copy of each generic function for every concrete type it's used with. This is the opposite of Java/C# where generics are erased at runtime.
+### 단형성화와 제로 비용 (Monomorphization and Zero Cost)
+
+Rust의 제네릭은 **단형성화** 방식으로 동작합니다. 즉, 컴파일러가 해당 제네릭 함수가 사용된 구체적인 타입마다 별도의 특화된 코드를 생성합니다. 이는 런타임에 제네릭 정보가 사라지는 Java나 C#의 방식과는 정반대입니다.
 
 ```rust
 fn max_of<T: PartialOrd>(a: T, b: T) -> T {
@@ -16,318 +18,144 @@ fn max_of<T: PartialOrd>(a: T, b: T) -> T {
 }
 
 fn main() {
-    max_of(3_i32, 5_i32);     // Compiler generates max_of_i32
-    max_of(2.0_f64, 7.0_f64); // Compiler generates max_of_f64
-    max_of("a", "z");         // Compiler generates max_of_str
+    max_of(3_i32, 5_i32);     // 컴파일러가 max_of_i32 생성
+    max_of(2.0_f64, 7.0_f64); // 컴파일러가 max_of_f64 생성
+    max_of("a", "z");         // 컴파일러가 max_of_str 생성
 }
 ```
 
-**What the compiler actually produces** (conceptually):
+**컴파일러가 실제로 생성하는 코드 (개념적)**:
 
 ```rust
-// Three separate functions — no runtime dispatch, no vtable:
+// 세 개의 별도 함수 — 런타임 디스패치나 vtable이 없음:
 fn max_of_i32(a: i32, b: i32) -> i32 { if a >= b { a } else { b } }
 fn max_of_f64(a: f64, b: f64) -> f64 { if a >= b { a } else { b } }
 fn max_of_str<'a>(a: &'a str, b: &'a str) -> &'a str { if a >= b { a } else { b } }
 ```
 
-> **Why does `max_of_str` need `<'a>` but `max_of_i32` doesn't?**  `i32` and `f64`
-> are `Copy` types — the function returns an owned value. But `&str` is a reference,
-> so the compiler must know the returned reference's lifetime. The `<'a>` annotation
-> says "the returned `&str` lives at least as long as both inputs."
+> **왜 `max_of_str`에는 `<'a>`가 필요한가요?** `i32`와 `f64`는 `Copy` 타입이므로 값이 소유권과 함께 반환됩니다. 하지만 `&str`은 참조자이므로, 컴파일러는 반환될 참조자의 수명을 알아야 합니다. `<'a>` 주석은 "반환되는 `&str`은 입력된 두 참조자 모두보다 짧거나 같게 유지된다"는 것을 보장합니다.
 
-**Advantages**: Zero runtime cost — identical to hand-written specialized code. The optimizer can inline, vectorize, and specialize each copy independently.
+**장점**: 런타임 비용이 전혀 없습니다. 수동으로 작성된 특화 코드와 성능이 동일하며, 최적화 도구(Optimizer)가 각 복사본에 대해 개별적인 인라이닝과 벡터화 최적화를 수행할 수 있습니다.
 
-**Comparison with C++**: Rust generics work like C++ templates but with one crucial difference — **bounds checking happens at definition, not instantiation**. In C++, a template compiles only when used with a specific type, leading to cryptic error messages deep in library code. In Rust, `T: PartialOrd` is checked when you define the function, so errors are caught early and messages are clear.
+---
 
-```rust
-// Rust: error at definition site — "T doesn't implement Display"
-fn broken<T>(val: T) {
-    println!("{val}"); // ❌ Error: T doesn't implement Display
-}
+### 제네릭이 독이 될 때: 코드 팽창 (Code Bloat)
 
-// Fix: add the bound
-fn fixed<T: std::fmt::Display>(val: T) {
-    println!("{val}"); // ✅
-}
-```
-
-### When Generics Hurt: Code Bloat
-
-Monomorphization has a cost — binary size. Each unique instantiation duplicates the function body:
+단형성화의 대가는 바이너리 크기입니다. 각 고유한 타입 인스턴스마다 함수 본문이 복제되기 때문입니다.
 
 ```rust
-// This innocent function...
+// 이 평범해 보이는 함수가...
 fn serialize<T: serde::Serialize>(value: &T) -> Vec<u8> {
     serde_json::to_vec(value).unwrap()
 }
 
-// ...used with 50 different types → 50 copies in the binary.
+// ...50개의 서로 다른 타입과 함께 사용되면 → 바이너리에 50개의 복사본이 생깁니다.
 ```
 
-**Mitigation strategies**:
+**완화 전략**:
 
-```rust
-// 1. Extract the non-generic core ("outline" pattern)
-fn serialize<T: serde::Serialize>(value: &T) -> Result<Vec<u8>, serde_json::Error> {
-    // Generic part: only the serialization call
-    let json_value = serde_json::to_value(value)?;
-    // Non-generic part: extracted into a separate function
-    serialize_value(json_value)
-}
-
-fn serialize_value(value: serde_json::Value) -> Result<Vec<u8>, serde_json::Error> {
-    // This function exists only ONCE in the binary
-    serde_json::to_vec(&value)
-}
-
-// 2. Use trait objects (dynamic dispatch) when inlining isn't critical
-fn log_item(item: &dyn std::fmt::Display) {
-    // One copy — uses vtable for dispatch
-    println!("[LOG] {item}");
-}
-```
-
-> **Rule of thumb**: Use generics for hot paths where inlining matters.
-> Use `dyn Trait` for cold paths (error handling, logging, configuration)
-> where a vtable call is negligible.
-
-### Generics vs Enums vs Trait Objects — Decision Guide
-
-Three ways to handle "different types, same interface" in Rust:
-
-| Approach | Dispatch | Known at | Extensible? | Overhead |
-|----------|----------|----------|-------------|----------|
-| **Generics** (`impl Trait` / `<T: Trait>`) | Static (monomorphized) | Compile time | ✅ (open set) | Zero — inlined |
-| **Enum** | Match arm | Compile time | ❌ (closed set) | Zero — no vtable |
-| **Trait object** (`dyn Trait`) | Dynamic (vtable) | Runtime | ✅ (open set) | Vtable pointer + indirect call |
-
-```rust
-// --- GENERICS: Open set, zero cost, compile-time ---
-fn process<H: Handler>(handler: H, request: Request) -> Response {
-    handler.handle(request) // Monomorphized — one copy per H
-}
-
-// --- ENUM: Closed set, zero cost, exhaustive matching ---
-enum Shape {
-    Circle(f64),
-    Rect(f64, f64),
-    Triangle(f64, f64, f64),
-}
-
-impl Shape {
-    fn area(&self) -> f64 {
-        match self {
-            Shape::Circle(r) => std::f64::consts::PI * r * r,
-            Shape::Rect(w, h) => w * h,
-            Shape::Triangle(a, b, c) => {
-                let s = (a + b + c) / 2.0;
-                (s * (s - a) * (s - b) * (s - c)).sqrt()
-            }
-        }
+1.  **비제네릭 핵심 로직 추출 (Outline 패턴)**:
+    ```rust
+    fn serialize<T: serde::Serialize>(value: &T) -> Result<Vec<u8>, serde_json::Error> {
+        // 제네릭 부분: 직렬화 호출만 수행
+        let json_value = serde_json::to_value(value)?;
+        // 비제네릭 부분: 별도 함수로 추출
+        serialize_value(json_value)
     }
-}
-// Adding a new variant forces updating ALL match arms — the compiler
-// enforces exhaustiveness. Great for "I control all the variants."
 
-// --- TRAIT OBJECT: Open set, runtime cost, extensible ---
-fn log_all(items: &[Box<dyn std::fmt::Display>]) {
-    for item in items {
-        println!("{item}"); // vtable dispatch
+    fn serialize_value(value: serde_json::Value) -> Result<Vec<u8>, serde_json::Error> {
+        // 이 함수는 바이너리에 단 '하나'만 존재합니다.
+        serde_json::to_vec(&value)
     }
-}
-```
+    ```
+2.  **트레이트 객체(동적 디스패치) 사용**: 인라이닝이 코드 성능에 결정적이지 않은 경우(예: 로깅, 에러 처리) `dyn Trait`를 고려하세요.
 
-**Decision flowchart**:
+---
 
+### 제네릭 vs 열거형 vs 트레이트 객체 결정 가이드
+
+| 접근 방식 | 디스패치 | 타입 확정 시점 | 확장 가능성 | 오버헤드 |
+| :--- | :--- | :--- | :--- | :--- |
+| **제네릭** (`<T: Trait>`) | 정적 (단형성화) | 컴파일 타임 | ✅ (누구나 확장 가능) | 제로 — 인라이닝 가능 |
+| **열거형 (Enum)** | 매치 암 (Match) | 컴파일 타임 | ❌ (정해진 타입만 가능) | 제로 — vtable 없음 |
+| **트레이트 객체** (`dyn Trait`) | 동적 (vtable) | 런타임 | ✅ (누구나 확장 가능) | vtable 포인터 + 간접 호출 |
+
+#### 의사 결정 흐름도:
 ```mermaid
 flowchart TD
-    A["Do you know ALL<br>possible types at<br>compile time?"]
-    A -->|"Yes, small<br>closed set"| B["Enum"]
-    A -->|"Yes, but set<br>is open"| C["Generics<br>(monomorphized)"]
-    A -->|"No — types<br>determined at runtime"| D["dyn Trait"]
+    A["컴파일 타임에 모든<br>가능한 타입을 알고 있는가?"]
+    A -->|"네, 작고<br>닫힌 타입 군"| B["열거형 (Enum)"]
+    A -->|"네, 하지만<br>열거형은 열려 있음"| C["제네릭<br>(단형성화)"]
+    A -->|"아니요 — 타입을<br>런타임에 결정해야 함"| D["트레이트 객체 (dyn Trait)"]
 
-    C --> E{"Hot path?<br>(millions of calls)"}
-    E -->|Yes| F["Generics<br>(inlineable)"]
-    E -->|No| G["dyn Trait<br>is fine"]
+    C --> E{"성능이 중요한<br>경로(Hot path)인가?"}
+    E -->|네| F["제네릭<br>(인라이닝 가능)"]
+    E -->|아니요| G["dyn Trait 이<br>바이너리 크기에 유리함"]
 
-    D --> H{"Need mixed types<br>in one collection?"}
-    H -->|Yes| I["Vec&lt;Box&lt;dyn Trait&gt;&gt;"]
-    H -->|No| C
-
-    style A fill:#e8f4f8,stroke:#2980b9,color:#000
-    style B fill:#d4efdf,stroke:#27ae60,color:#000
-    style C fill:#d4efdf,stroke:#27ae60,color:#000
-    style D fill:#fdebd0,stroke:#e67e22,color:#000
-    style F fill:#d4efdf,stroke:#27ae60,color:#000
-    style G fill:#fdebd0,stroke:#e67e22,color:#000
-    style I fill:#fdebd0,stroke:#e67e22,color:#000
-    style E fill:#fef9e7,stroke:#f1c40f,color:#000
-    style H fill:#fef9e7,stroke:#f1c40f,color:#000
+    D --> H{"하나의 컬렉션에<br>여러 타입을 섞어야 하는가?"}
+    H -->|네| I["Vec&lt;Box&lt;dyn Trait&gt;&gt;"]
+    H -->|아니요| C
 ```
 
-### Const Generics
+---
 
-Since Rust 1.51, you can parameterize types and functions over *constant values*, not just types:
+### 상수 제네릭 (Const Generics)
+
+Rust 1.51부터는 타입뿐만 아니라 **상수 값**을 제네릭 파라미터로 사용할 수 있습니다.
 
 ```rust
-// Array wrapper parameterized over size
 struct Matrix<const ROWS: usize, const COLS: usize> {
     data: [[f64; COLS]; ROWS],
 }
 
 impl<const ROWS: usize, const COLS: usize> Matrix<ROWS, COLS> {
-    fn new() -> Self {
-        Matrix { data: [[0.0; COLS]; ROWS] }
-    }
-
     fn transpose(&self) -> Matrix<COLS, ROWS> {
         let mut result = Matrix::<COLS, ROWS>::new();
-        for r in 0..ROWS {
-            for c in 0..COLS {
-                result.data[c][r] = self.data[r][c];
-            }
-        }
+        // ... 전치 로직
         result
     }
 }
 
-// The compiler enforces dimensional correctness:
+// 컴파일러가 차원(Dimension)의 일치 여부를 검사합니다:
 fn multiply<const M: usize, const N: usize, const P: usize>(
     a: &Matrix<M, N>,
-    b: &Matrix<N, P>, // N must match!
-) -> Matrix<M, P> {
-    let mut result = Matrix::<M, P>::new();
-    for i in 0..M {
-        for j in 0..P {
-            for k in 0..N {
-                result.data[i][j] += a.data[i][k] * b.data[k][j];
-            }
-        }
-    }
-    result
-}
-
-// Usage:
-let a = Matrix::<2, 3>::new(); // 2×3
-let b = Matrix::<3, 4>::new(); // 3×4
-let c = multiply(&a, &b);      // 2×4 ✅
-
-// let d = Matrix::<5, 5>::new();
-// multiply(&a, &d); // ❌ Compile error: expected Matrix<3, _>, got Matrix<5, 5>
+    b: &Matrix<N, P>, // N이 반드시 일치해야 함!
+) -> Matrix<M, P> { /* ... */ }
 ```
 
-> **C++ comparison**: This is similar to `template<int N>` in C++, but Rust
-> const generics are type-checked eagerly and don't suffer from SFINAE complexity.
+---
 
-### Const Functions (const fn)
+### 상수 함수 (const fn)
 
-`const fn` marks a function as evaluable at compile time — Rust's equivalent
-of C++ `constexpr`. The result can be used in `const` and `static` contexts:
+`const fn`은 컴파일 타임에 평가될 수 있는 함수를 의미합니다. 결과값은 `const`나 `static` 문취에서 바로 사용할 수 있습니다. (C++의 `constexpr`과 유사)
 
 ```rust
-// Basic const fn — evaluated at compile time when used in const context
 const fn celsius_to_fahrenheit(c: f64) -> f64 {
     c * 9.0 / 5.0 + 32.0
 }
 
-const BOILING_F: f64 = celsius_to_fahrenheit(100.0); // Computed at compile time
-const FREEZING_F: f64 = celsius_to_fahrenheit(0.0);  // 32.0
+const BOILING_F: f64 = celsius_to_fahrenheit(100.0); // 컴파일 타임에 계산됨
 
-// Const constructors — create statics without lazy_static!
-struct BitMask(u32);
-
+// 상수 생성자 — lazy_static! 없이도 정적 변수 생성이 가능함
 impl BitMask {
-    const fn new(bit: u32) -> Self {
-        BitMask(1 << bit)
-    }
-
-    const fn or(self, other: BitMask) -> Self {
-        BitMask(self.0 | other.0)
-    }
-
-    const fn contains(&self, bit: u32) -> bool {
-        self.0 & (1 << bit) != 0
-    }
+    const fn new(bit: u32) -> Self { BitMask(1 << bit) }
 }
-
-// Static lookup table — no runtime cost, no lazy initialization
-const GPIO_INPUT:  BitMask = BitMask::new(0);
-const GPIO_OUTPUT: BitMask = BitMask::new(1);
-const GPIO_IRQ:    BitMask = BitMask::new(2);
-const GPIO_IO:     BitMask = GPIO_INPUT.or(GPIO_OUTPUT);
-
-// Register maps as const arrays:
-const SENSOR_THRESHOLDS: [u16; 4] = {
-    let mut table = [0u16; 4];
-    table[0] = 50;   // Warning
-    table[1] = 70;   // High
-    table[2] = 85;   // Critical
-    table[3] = 100;  // Shutdown
-    table
-};
-// The entire table exists in the binary — no heap, no runtime init.
 ```
-
-**What you CAN do in `const fn`** (as of Rust 1.79+):
-- Arithmetic, bit operations, comparisons
-- `if`/`else`, `match`, `loop`, `while` (control flow)
-- Creating and modifying local variables (`let mut`)
-- Calling other `const fn`s
-- References (`&`, `&mut` — within the const context)
-- `panic!()` (becomes a compile error if reached at compile time)
-
-**What you CANNOT do** (yet):
-- Heap allocation (`Box`, `Vec`, `String`)
-- Trait method calls (only inherent methods)
-- Floating-point in some contexts (stabilized for basic ops)
-- I/O or side effects
-
-```rust
-// const fn with panic — becomes a compile-time error:
-const fn checked_div(a: u32, b: u32) -> u32 {
-    if b == 0 {
-        panic!("division by zero"); // Compile error if b is 0 at const time
-    }
-    a / b
-}
-
-const RESULT: u32 = checked_div(100, 4);  // ✅ 25
-// const BAD: u32 = checked_div(100, 0);  // ❌ Compile error: "division by zero"
-```
-
-> **C++ comparison**: `const fn` is Rust's `constexpr`. The key difference:
-> Rust's version is opt-in and the compiler rigorously verifies that only
-> const-compatible operations are used. In C++, `constexpr` functions can
-> silently fall back to runtime evaluation — in Rust, a `const` context
-> *requires* compile-time evaluation or it's a hard error.
-
-> **Practical advice**: Make constructors and simple utility functions `const fn`
-> whenever possible — it costs nothing and enables callers to use them in const
-> contexts. For hardware diagnostic code, `const fn` is ideal for register
-> definitions, bitmask construction, and threshold tables.
-
-> **Key Takeaways — Generics**
-> - Monomorphization gives zero-cost abstractions but can cause code bloat — use `dyn Trait` for cold paths
-> - Const generics (`[T; N]`) replace C++ template tricks with compile-time–checked array sizes
-> - `const fn` eliminates `lazy_static!` for compile-time–computable values
-
-> **See also:** [Ch 2 — Traits In Depth](ch02-traits-in-depth.md) for trait bounds, associated types, and trait objects. [Ch 4 — PhantomData](ch04-phantomdata-types-that-carry-no-data.md) for zero-sized generic markers.
 
 ---
 
-### Exercise: Generic Cache with Eviction ★★ (~30 min)
+### 📝 연습 문제: 만료 정책이 있는 제네릭 캐시 ★★ (~30분)
 
-Build a generic `Cache<K, V>` struct that stores key-value pairs with a configurable maximum capacity. When full, the oldest entry is evicted (FIFO). Requirements:
+설정된 최대 용량을 가진 제네릭 `Cache<K, V>` 구조체를 작성하세요. 용량이 가득 차면 가장 오래된 항목이 제거됩니다(FIFO).
 
-- `fn new(capacity: usize) -> Self`
-- `fn insert(&mut self, key: K, value: V)` — evicts the oldest if at capacity
-- `fn get(&self, key: &K) -> Option<&V>`
-- `fn len(&self) -> usize`
-- Constrain `K: Eq + Hash + Clone`
+- **요구 사항**:
+  - `fn new(capacity: usize) -> Self`
+  - `fn insert(&mut self, key: K, value: V)` — 용량 초과 시 가장 오래된 항목 제거
+  - `fn get(&self, key: &K) -> Option<&V>`
+  - 제약 조건: `K: Eq + Hash + Clone`
 
 <details>
-<summary>🔑 Solution</summary>
+<summary>🔑 정답 및 힌트 보기</summary>
 
 ```rust
 use std::collections::{HashMap, VecDeque};
@@ -365,27 +193,14 @@ impl<K: Eq + Hash + Clone, V> Cache<K, V> {
     fn get(&self, key: &K) -> Option<&V> {
         self.map.get(key)
     }
-
-    fn len(&self) -> usize {
-        self.map.len()
-    }
-}
-
-fn main() {
-    let mut cache = Cache::new(3);
-    cache.insert("a", 1);
-    cache.insert("b", 2);
-    cache.insert("c", 3);
-    assert_eq!(cache.len(), 3);
-
-    cache.insert("d", 4); // Evicts "a"
-    assert_eq!(cache.get(&"a"), None);
-    assert_eq!(cache.get(&"d"), Some(&4));
-    println!("Cache works! len = {}", cache.len());
 }
 ```
-
 </details>
 
-***
+---
+
+### 📌 요약
+- **단형성화**는 제로 비용 추상화를 제공하지만 코드 팽창을 야기할 수 있으므로, Cold path에서는 `dyn Trait`를 고려하세요.
+- **상수 제네릭**은 배열 크기 등을 컴파일 타임에 안전하게 검사하게 해줍니다.
+- **`const fn`**은 `lazy_static!`과 같은 런타임 비용을 줄여 컴파일 타임 계산으로 대체해 줍니다.
 

@@ -5,48 +5,48 @@ use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// (slug, title, description, category)
+/// (슬러그, 제목, 설명, 카테고리)
 const BOOKS: &[(&str, &str, &str, &str)] = &[
     (
         "c-cpp-book",
-        "Rust for C/C++ Programmers",
-        "Move semantics, RAII, FFI, embedded, no_std",
+        "C/C++ 개발자를 위한 Rust",
+        "이동 의미론(Move semantics), RAII, FFI, 임베디드, no_std",
         "bridge",
     ),
     (
         "csharp-book",
-        "Rust for C# Programmers",
-        "Best for Swift / C# / Java developers",
+        "C# 개발자를 위한 Rust",
+        "Swift / C# / Java 개발자에게 적합",
         "bridge",
     ),
     (
         "python-book",
-        "Rust for Python Programmers",
-        "Dynamic → static typing, GIL-free concurrency",
+        "Python 개발자를 위한 Rust",
+        "동적 타이핑 → 정적 타이핑, GIL 없는 병렬 처리",
         "bridge",
     ),
     (
         "async-book",
-        "Async Rust: From Futures to Production",
-        "Tokio, streams, cancellation safety",
+        "비동기 Rust: Future부터 실전까지",
+        "Tokio, 스트림, 취소 안전성(cancellation safety)",
         "deep-dive",
     ),
     (
         "rust-patterns-book",
-        "Rust Patterns",
-        "Pin, allocators, lock-free structures, unsafe",
+        "Rust 패턴",
+        "Pin, 할당자, 락 프리(lock-free) 구조체, unsafe",
         "advanced",
     ),
     (
         "type-driven-correctness-book",
-        "Type-Driven Correctness",
-        "Type-state, phantom types, capability tokens",
+        "타입 주도 설계와 정확성",
+        "타입 상태(Type-state), 팬텀 타입(phantom types), 케이퍼빌리티 토큰",
         "expert",
     ),
     (
         "engineering-book",
-        "Rust Engineering Practices",
-        "Build scripts, cross-compilation, coverage, CI/CD",
+        "Rust 엔지니어링 실무",
+        "빌드 스크립트, 교차 컴파일, 커버리지, CI/CD",
         "practices",
     ),
 ];
@@ -54,7 +54,7 @@ const BOOKS: &[(&str, &str, &str, &str)] = &[
 fn project_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
-        .expect("xtask must live in a workspace subdirectory")
+        .expect("xtask는 워크스페이스 하위 디렉토리에 위치해야 합니다")
         .to_path_buf()
 }
 
@@ -70,7 +70,7 @@ fn main() {
         Some("clean") => cmd_clean(),
         Some("--help" | "-h" | "help") | None => print_usage(0),
         Some(other) => {
-            eprintln!("Unknown command: {other}\n");
+            eprintln!("알 수 없는 명령어: {other}\n");
             print_usage(1);
         }
     }
@@ -85,18 +85,18 @@ fn print_usage(code: i32) {
     let _ = writeln!(
         stream,
         "\
-Usage: cargo xtask <COMMAND>
+사용법: cargo xtask <명령어>
 
-Commands:
-  build    Build all books into site/ (for local preview)
-  serve    Build and serve at http://localhost:3000
-  deploy   Build all books into docs/ (for GitHub Pages)
-  clean    Remove site/ and docs/ directories"
+명령어:
+  build    모든 도서를 site/ 디렉토리에 빌드 (로컬 미리보기용)
+  serve    빌드 후 http://localhost:3000 에서 서비스 실행
+  deploy   모든 도서를 docs/ 디렉토리에 빌드 (GitHub Pages용)
+  clean    site/ 및 docs/ 디렉토리 삭제"
     );
     std::process::exit(code);
 }
 
-// ── build ────────────────────────────────────────────────────────────
+// ── build (빌드) ────────────────────────────────────────────────────────────
 
 fn cmd_build() {
     build_to("site");
@@ -104,7 +104,7 @@ fn cmd_build() {
 
 fn cmd_deploy() {
     build_to("docs");
-    println!("\nTo publish, commit docs/ and enable GitHub Pages → \"Deploy from a branch\" → /docs.");
+    println!("\n배포하려면 docs/ 디렉토리를 커밋하고, GitHub Pages 설정에서 \"Deploy from a branch\" → /docs를 선택하세요.");
 }
 
 fn build_to(dir_name: &str) {
@@ -112,17 +112,17 @@ fn build_to(dir_name: &str) {
     let out = root.join(dir_name);
 
     if out.exists() {
-        fs::remove_dir_all(&out).expect("failed to clean output dir");
+        fs::remove_dir_all(&out).expect("출력 디렉토리 청소 실패");
     }
-    fs::create_dir_all(&out).expect("failed to create output dir");
+    fs::create_dir_all(&out).expect("출력 디렉토리 생성 실패");
 
-    println!("Building unified site into {dir_name}/\n");
+    println!("{dir_name}/ 디렉토리에 통합 사이트를 빌드 중...\n");
 
     let mut ok = 0u32;
     for &(slug, _, _, _) in BOOKS {
         let book_dir = root.join(slug);
         if !book_dir.is_dir() {
-            eprintln!("  ✗ {slug}/ not found, skipping");
+            eprintln!("  ✗ {slug}/ 디렉토리를 찾을 수 없어 건너뜁니다");
             continue;
         }
         let dest = out.join(slug);
@@ -131,28 +131,28 @@ fn build_to(dir_name: &str) {
             .arg(&dest)
             .current_dir(&book_dir)
             .status()
-            .expect("failed to run mdbook — is it installed?");
+            .expect("mdbook 실행 실패 — 설치되어 있습니까?");
 
         if status.success() {
             println!("  ✓ {slug}");
             ok += 1;
         } else {
-            eprintln!("  ✗ {slug} FAILED");
+            eprintln!("  ✗ {slug} 빌드 실패");
         }
     }
-    println!("\n  {ok}/{} books built", BOOKS.len());
+    println!("\n  {ok}/{} 권의 도서가 빌드되었습니다", BOOKS.len());
 
     write_landing_page(&out);
-    println!("\nDone! Output in {dir_name}/");
+    println!("\n완료! 출력물은 {dir_name}/ 에 있습니다.");
 }
 
 fn category_label(cat: &str) -> &str {
     match cat {
-        "bridge" => "Bridge",
-        "deep-dive" => "Deep Dive",
-        "advanced" => "Advanced",
-        "expert" => "Expert",
-        "practices" => "Practices",
+        "bridge" => "입문 (Bridge)",
+        "deep-dive" => "심화 (Deep Dive)",
+        "advanced" => "고급 (Advanced)",
+        "expert" => "전문가 (Expert)",
+        "practices" => "실무 (Practices)",
         _ => cat,
     }
 }
@@ -174,11 +174,11 @@ fn write_landing_page(site: &Path) {
 
     let html = format!(
         r##"<!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rust Training Books</title>
+  <title>Rust 교육 도서</title>
   <style>
     :root {{
       --bg: #1a1a2e;
@@ -207,7 +207,7 @@ fn write_landing_page(site: &Path) {
     h1 span {{ color: var(--accent); }}
     .subtitle {{ color: var(--muted); font-size: 1.1rem; margin-bottom: 1.2rem; }}
 
-    /* Legend */
+    /* Legend (범례) */
     .legend {{
       display: flex; flex-wrap: wrap; gap: 0.6rem 1.4rem;
       justify-content: center; margin-bottom: 2.2rem;
@@ -218,7 +218,7 @@ fn write_landing_page(site: &Path) {
       width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
     }}
 
-    /* Grid & Cards */
+    /* Grid & Cards (그리드 및 카드) */
     .grid {{
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -245,14 +245,14 @@ fn write_landing_page(site: &Path) {
     .card h2 {{ font-size: 1.2rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }}
     .card p  {{ color: var(--muted); font-size: 0.9rem; line-height: 1.4; }}
 
-    /* Category colours */
+    /* Category colours (카테고리 색상) */
     .cat-bridge     {{ --stripe: var(--clr-bridge); }}
     .cat-deep-dive  {{ --stripe: var(--clr-deep-dive); }}
     .cat-advanced   {{ --stripe: var(--clr-advanced); }}
     .cat-expert     {{ --stripe: var(--clr-expert); }}
     .cat-practices  {{ --stripe: var(--clr-practices); }}
 
-    /* Label pill */
+    /* Label pill (라벨 알약) */
     .label {{
       font-size: 0.55rem; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; padding: 0.15em 0.55em;
@@ -264,33 +264,33 @@ fn write_landing_page(site: &Path) {
   </style>
 </head>
 <body>
-  <h1>🦀 <span>Rust</span> Training Books</h1>
-  <p class="subtitle">Pick the guide that matches your background</p>
+  <h1>🦀 <span>Rust</span> 교육 도서</h1>
+  <p class="subtitle">자신의 배경지식에 맞는 가이드를 선택하세요</p>
 
   <div class="legend">
-    <span class="legend-item"><span class="legend-dot" style="background:var(--clr-bridge)"></span> Bridge &mdash; learn Rust from another language</span>
-    <span class="legend-item"><span class="legend-dot" style="background:var(--clr-deep-dive)"></span> Deep Dive</span>
-    <span class="legend-item"><span class="legend-dot" style="background:var(--clr-advanced)"></span> Advanced</span>
-    <span class="legend-item"><span class="legend-dot" style="background:var(--clr-expert)"></span> Expert</span>
-    <span class="legend-item"><span class="legend-dot" style="background:var(--clr-practices)"></span> Practices</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--clr-bridge)"></span> Bridge &mdash; 다른 언어에서 Rust 배우기</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--clr-deep-dive)"></span> Deep Dive &mdash; 심화 학습</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--clr-advanced)"></span> Advanced &mdash; 고급 주제</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--clr-expert)"></span> Expert &mdash; 전문가 수준</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--clr-practices)"></span> Practices &mdash; 실무 관행</span>
   </div>
 
   <div class="grid">
 {cards}
   </div>
-  <footer>Built with <a href="https://rust-lang.github.io/mdBook/" style="color:var(--accent)">mdBook</a></footer>
+  <footer><a href="https://rust-lang.github.io/mdBook/" style="color:var(--accent)">mdBook</a>으로 제작되었습니다</footer>
 </body>
 </html>
 "##
     );
 
     let path = site.join("index.html");
-    fs::write(&path, html).expect("failed to write index.html");
+    fs::write(&path, html).expect("index.html 쓰기 실패");
     println!("  ✓ index.html");
 }
 
-/// Resolve `request_target` (HTTP request path, e.g. `/foo/bar?x=1`) to a file under `site_canon`.
-/// Returns `None` for traversal attempts, missing files, or paths that escape `site_canon` (symlinks).
+/// `request_target`(HTTP 요청 경로, 예: `/foo/bar?x=1`)을 `site_canon` 아래의 파일로 해석합니다.
+/// 순회 시도, 누락된 파일 또는 `site_canon`을 벗어나는 경로(심볼릭 링크)에 대해서는 `None`을 반환합니다.
 fn resolve_site_file(site_canon: &Path, request_target: &str) -> Option<PathBuf> {
     let path_only = request_target.split('?').next()?.split('#').next()?;
     let decoded = percent_decode_path(path_only);
@@ -344,20 +344,20 @@ fn percent_decode_path(input: &str) -> String {
     String::from_utf8_lossy(&decoded).into_owned()
 }
 
-// ── serve ────────────────────────────────────────────────────────────
+// ── serve (서비스) ───────────────────────────────────────────────────────────
 
 fn cmd_serve() {
     let site = project_root().join("site");
     let site_canon = fs::canonicalize(&site).expect(
-        "site/ not found — run `cargo xtask build` first (e.g. `cargo xtask serve` runs build automatically)",
+        "site/ 폴더를 찾을 수 없습니다 — `cargo xtask build`를 먼저 실행하세요 (예: `cargo xtask serve`는 빌드를 자동으로 실행합니다)",
     );
     let addr = "127.0.0.1:3000";
-    let listener = TcpListener::bind(addr).expect("failed to bind port 3000");
+    let listener = TcpListener::bind(addr).expect("3000번 포트 바인딩 실패");
 
-    // Handle Ctrl+C gracefully so cargo doesn't report an error
+    // cargo가 에러를 보고하지 않도록 Ctrl+C를 우아하게 처리합니다.
     ctrlc_exit();
 
-    println!("\nServing at http://{addr}  (Ctrl+C to stop)");
+    println!("\nhttp://{addr} 에서 서비스 중 (중단하려면 Ctrl+C)");
 
     for stream in listener.incoming() {
         let Ok(mut stream) = stream else { continue };
@@ -392,8 +392,8 @@ fn cmd_serve() {
     }
 }
 
-/// Install a Ctrl+C handler that exits cleanly (code 0) instead of
-/// letting the OS terminate with STATUS_CONTROL_C_EXIT.
+/// OS가 STATUS_CONTROL_C_EXIT와 함께 종료되지 않도록
+/// 깔끔하게 종료(코드 0)하는 Ctrl+C 핸들러를 설치합니다.
 fn ctrlc_exit() {
     unsafe {
         libc_set_handler();
@@ -402,7 +402,7 @@ fn ctrlc_exit() {
 
 #[cfg(windows)]
 unsafe fn libc_set_handler() {
-    // SetConsoleCtrlHandler via the Windows API
+    // Windows API를 통해 SetConsoleCtrlHandler 설정
     extern "system" {
         fn SetConsoleCtrlHandler(
             handler: Option<unsafe extern "system" fn(u32) -> i32>,
@@ -419,7 +419,7 @@ unsafe fn libc_set_handler() {
 
 #[cfg(not(windows))]
 unsafe fn libc_set_handler() {
-    // On Unix, register SIGINT via libc
+    // Unix에서 libc를 통해 SIGINT 등록
     extern "C" {
         fn signal(sig: i32, handler: extern "C" fn(i32)) -> usize;
     }
@@ -446,15 +446,15 @@ fn guess_mime(path: &Path) -> &'static str {
     }
 }
 
-// ── clean ────────────────────────────────────────────────────────────
+// ── clean (청소) ────────────────────────────────────────────────────────────
 
 fn cmd_clean() {
     let root = project_root();
     for dir_name in ["site", "docs"] {
         let dir = root.join(dir_name);
         if dir.exists() {
-            fs::remove_dir_all(&dir).expect("failed to remove dir");
-            println!("Removed {dir_name}/");
+            fs::remove_dir_all(&dir).expect("디렉토리 삭제 실패");
+            println!("{dir_name}/ 디렉토리를 삭제했습니다.");
         }
     }
 }

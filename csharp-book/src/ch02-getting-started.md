@@ -1,346 +1,80 @@
-## 설치 및 설정
+# 시작하기: 설치와 환경 설정
 
-> **학습 목표:** Rust를 설치하고 IDE를 설정하는 방법을 배웁니다. Cargo 빌드 시스템과 MSBuild/NuGet의 차이점을 알아보고, C#과 비교하여 첫 번째 Rust 프로그램을 작성하며 커맨드 라인 입력을 읽는 방법을 익힙니다.
->
-> **난이도:** 🟢 초급
+> **학습 목표:** Rust 개발 환경을 구축하고 첫 번째 프로그램을 작성해 봅니다. C#의 `dotnet` 도구 체인에 대응하는 `cargo` 빌드 시스템을 익히고, 간단한 콘솔 입력과 커맨드 라인 인자를 처리하는 방법을 배웁니다.
 
-### Rust 설치하기
-```bash
-# Rust 설치 (Windows, macOS, Linux 공통)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+---
 
-# Windows 사용자는 다음 주소에서 다운로드할 수도 있습니다: https://rustup.rs/
-```
+### 1. 개발 환경 구축
+Rust는 `rustup`이라는 올인원 설치 도구를 사용합니다.
 
-### Rust 도구 vs C# 도구
-| C# 도구 | Rust 대응 도구 | 용도 |
-|---------|----------------|---------|
-| `dotnet new` | `cargo new` | 새 프로젝트 생성 |
-| `dotnet build` | `cargo build` | 프로젝트 컴파일 |
-| `dotnet run` | `cargo run` | 프로젝트 실행 |
-| `dotnet test` | `cargo test` | 테스트 실행 |
-| NuGet | Crates.io | 패키지 저장소 |
-| MSBuild | Cargo | 빌드 시스템 |
-| Visual Studio | VS Code + rust-analyzer | IDE |
+- **설치**: [rustup.rs](https://rustup.rs/)에서 OS에 맞는 인스톨러를 실행하세요. (macOS/Linux는 한 줄의 터미널 명령어로 설치 가능)
+- **IDE 추천**:
+  - **VS Code**: `rust-analyzer` 확장이 사실상의 표준입니다. 디버깅을 위해 `CodeLLDB` 확장을 함께 설치하세요.
+  - **RustRover**: JetBrains의 전용 IDE로, Rider를 쓰던 개발자에게 익숙한 환경입니다.
 
-### IDE 설정
-1. **VS Code** (입문자 권장)
-   - "rust-analyzer" 확장 설치
-   - 디버깅을 위해 "CodeLLDB" 확장 설치
+| **기능** | **C# (.NET)** | **Rust** |
+| :--- | :--- | :--- |
+| **빌드/실행 도구** | `dotnet` (build, run, test) | `cargo` (build, run, test) |
+| **패키지 관리자** | NuGet | Crates.io |
+| **프로젝트 설정** | `.csproj` (XML) | `Cargo.toml` (TOML) |
+| **종속성 잠금** | `packages.lock.json` | `Cargo.lock` |
 
-2. **Visual Studio** (Windows)
-   - Rust 지원 확장 설치
+---
 
-3. **JetBrains RustRover** (전용 IDE)
-   - C#의 Rider와 유사한 환경 제공
+### 2. 첫 번째 프로그램: Hello World
+C#의 `Program.cs`와 Rust의 `main.rs`를 비교해 봅시다.
 
-***
-
-## 첫 번째 Rust 프로그램
-
-### C# Hello World
-```csharp
-// Program.cs
-using System;
-
-namespace HelloWorld
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            Console.WriteLine("Hello, World!");
-        }
-    }
-}
-```
-
-### Rust Hello World
 ```rust
-// main.rs
+// src/main.rs: 클래스 없이 함수만으로 시작 가능
 fn main() {
-    println!("Hello, World!");
+    // println!은 함수가 아닌 '매크로'입니다.
+    // 타입 안전한 포맷팅을 컴파일 타임에 검사합니다.
+    println!("Hello, Rust from C# developer!");
 }
 ```
 
-### C# 개발자를 위한 주요 차이점
-1. **클래스가 필수가 아님** - 함수는 최상위 레벨에 존재할 수 있습니다.
-2. **네임스페이스 없음** - 대신 모듈(Module) 시스템을 사용합니다.
-3. **`println!`은 매크로임** - 끝에 붙은 `!`를 확인하세요.
-4. **println! 뒤에 세미콜론이 없음** - 표현식(Expression)과 문(Statement)의 차이입니다.
-5. **명시적인 반환 타입 없음** - `main`은 유닛 타입인 `()`를 반환합니다.
+- **프로젝트 생성**: `cargo new my_project` 명령으로 새 프로젝트 폴더를 만듭니다.
+- **실행**: `cargo run` 명령으로 빌드와 실행을 한 번에 수행합니다.
 
-### 첫 번째 프로젝트 만들기
-```bash
-# 새 프로젝트 생성 ('dotnet new console'과 유사)
-cargo new hello_rust
-cd hello_rust
+---
 
-# 생성된 프로젝트 구조:
-# hello_rust/
-# ├── Cargo.toml      (.csproj 파일과 유사)
-# └── src/
-#     └── main.rs     (Program.cs와 유사)
+### 3. 입력 처리와 CLI 인자
+C#의 `Console.ReadLine()`과 `args[]`가 Rust에서는 어떻게 바뀌는지 살펴봅니다.
 
-# 프로젝트 실행 ('dotnet run'과 유사)
-cargo run
-```
+| **사용 사례** | **C# 스타일** | **Rust 스타일** |
+| :--- | :--- | :--- |
+| **콘솔 읽기** | `Console.ReadLine()` | `io::stdin().read_line(&mut buf)` |
+| **문자열 파싱** | `int.Parse(s)` | `s.trim().parse::<i32>()` |
+| **CLI 인자** | `string[] args` | `std::env::args().collect::<Vec<_>>()` |
+| **환경 변수** | `Environment.GetVar()` | `std::env::var("KEY")` |
 
-***
-
-## Cargo vs NuGet/MSBuild
-
-### 프로젝트 구성
-
-**C# (.csproj)**
-```xml
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-  </PropertyGroup>
-  
-  <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-  <PackageReference Include="Serilog" Version="3.0.1" />
-</Project>
-```
-
-**Rust (Cargo.toml)**
-```toml
-[package]
-name = "hello_rust"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-serde_json = "1.0"    # Newtonsoft.Json에 해당
-log = "0.4"           # Serilog에 해당
-```
-
-### 주요 Cargo 명령어
-```bash
-# 새 프로젝트 생성
-cargo new my_project
-cargo new my_project --lib  # 라이브러리 프로젝트 생성
-
-# 빌드 및 실행
-cargo build          # 'dotnet build'와 유사
-cargo run            # 'dotnet run'와 유사
-cargo test           # 'dotnet test'와 유사
-
-# 패키지 관리
-cargo add serde      # 의존성 추가 ('dotnet add package'와 유사)
-cargo update         # 의존성 업데이트
-
-# 릴리스 빌드
-cargo build --release  # 최적화된 빌드
-cargo run --release    # 최적화된 버전 실행
-
-# 문서화
-cargo doc --open     # 문서를 생성하고 브라우저로 엽니다
-```
-
-### 작업 공간(Workspace) vs 솔루션(Solution)
-
-**C# 솔루션 (.sln)**
-```text
-MySolution/
-├── MySolution.sln
-├── WebApi/
-│   └── WebApi.csproj
-├── Business/
-│   └── Business.csproj
-└── Tests/
-    └── Tests.csproj
-```
-
-**Rust 작업 공간 (Cargo.toml)**
-```toml
-[workspace]
-members = [
-    "web_api",
-    "business", 
-    "tests"
-]
-```
-
-***
-
-## 입력 읽기 및 CLI 인자 처리
-
-모든 C# 개발자는 `Console.ReadLine()`을 알고 있습니다. Rust에서 사용자 입력, 환경 변수, 커맨드 라인 인자를 처리하는 방법은 다음과 같습니다.
-
-### 콘솔 입력
-```csharp
-// C# — 사용자 입력 읽기
-Console.Write("이름을 입력하세요: ");
-string? name = Console.ReadLine();  // .NET 6+에서는 string? 반환
-Console.WriteLine($"안녕하세요, {name}님!");
-
-// 입력 파싱
-Console.Write("숫자를 입력하세요: ");
-if (int.TryParse(Console.ReadLine(), out int number))
-{
-    Console.WriteLine($"입력한 숫자: {number}");
-}
-else
-{
-    Console.WriteLine("유효한 숫자가 아닙니다.");
-}
-```
+#### 💡 실무에서는 `clap`을 쓰세요
+C#에서 복잡한 CLI 인자를 위해 `CommandLineParser`를 쓰듯, Rust에서는 **`clap`** 크레이트가 표준입니다. 구조체 선언만으로 `--help` 메시지와 타입 검증이 자동으로 생성됩니다.
 
 ```rust
-use std::io::{self, Write};
-
-fn main() {
-    // 입력 한 줄 읽기
-    print!("이름을 입력하세요: ");
-    io::stdout().flush().unwrap(); // print!는 자동 플러시되지 않으므로 수동 플러시 필요
-
-    let mut name = String::new();
-    io::stdin().read_line(&mut name).expect("줄을 읽지 못했습니다");
-    let name = name.trim(); // 줄바꿈 문자 제거
-    println!("안녕하세요, {name}님!");
-
-    // 입력 파싱
-    print!("숫자를 입력하세요: ");
-    io::stdout().flush().unwrap();
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).expect("읽지 못했습니다");
-    match input.trim().parse::<i32>() {
-        Ok(number) => println!("입력한 숫자: {number}"),
-        Err(_)     => println!("유효한 숫자가 아닙니다."),
-    }
-}
-```
-
-### 커맨드 라인 인자
-```csharp
-// C# — CLI 인자 읽기
-static void Main(string[] args)
-{
-    if (args.Length < 1)
-    {
-        Console.WriteLine("사용법: program <파일명>");
-        return;
-    }
-    string filename = args[0];
-    Console.WriteLine($"처리 중: {filename}");
-}
-```
-
-```rust
-use std::env;
-
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    //  args[0] = 프로그램 이름 (C#의 Assembly 이름과 유사)
-    //  args[1..] = 실제 인자들
-
-    if args.len() < 2 {
-        eprintln!("사용법: {} <파일명>", args[0]); // eprintln! → 표준 에러(stderr)로 출력
-        std::process::exit(1);
-    }
-    let filename = &args[1];
-    println!("처리 중: {filename}");
-}
-```
-
-### 환경 변수
-```csharp
-// C#
-string dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "localhost";
-```
-
-```rust
-use std::env;
-
-let db_url = env::var("DATABASE_URL").unwrap_or_else(|_| "localhost".to_string());
-// env::var는 Result<String, VarError>를 반환합니다 — null이 없습니다!
-```
-
-### `clap`을 이용한 실무형 CLI 앱
-
-단순한 인자 파싱을 넘어선 작업에는 **`clap`** 크레이트를 사용하세요. 이는 C#의 `System.CommandLine`이나 `CommandLineParser` 같은 라이브러리에 대응하는 Rust의 표준적인 도구입니다.
-
-```toml
-# Cargo.toml
-[dependencies]
-clap = { version = "4", features = ["derive"] }
-```
-
-```rust
-use clap::Parser;
-
-/// 단순한 파일 처리기 — 이 문서 주석은 도움말 텍스트가 됩니다.
-#[derive(Parser, Debug)]
-#[command(name = "processor", version, about)]
+// clap을 활용한 타입 안전한 인자 파싱 (예시)
+#[derive(Parser)]
 struct Args {
-    /// 처리할 입력 파일
     #[arg(short, long)]
-    input: String,
-
-    /// 출력 파일 (기본값: 표준 출력)
-    #[arg(short, long)]
-    output: Option<String>,
-
-    /// 상세 로그 활성화
-    #[arg(short, long, default_value_t = false)]
-    verbose: bool,
-
-    /// 작업자 스레드 수
-    #[arg(short = 'j', long, default_value_t = 4)]
-    threads: usize,
-}
-
-fn main() {
-    let args = Args::parse(); // 자동 파싱, 검증, --help 생성
-
-    if args.verbose {
-        println!("입력:   {}", args.input);
-        println!("출력:  {:?}", args.output);
-        println!("스레드: {}", args.threads);
-    }
-
-    // args.input, args.output 등을 사용합니다.
+    name: String,
+    #[arg(short, long, default_value_t = 1)]
+    count: u8,
 }
 ```
 
-```bash
-# 자동 생성된 도움말:
-$ processor --help
-단순한 파일 처리기
+---
 
-사용법: processor [OPTIONS] --input <INPUT>
+### 📝 실습 연습: 에코(Echo) 프로그램 만들기
 
-옵션:
-  -i, --input <INPUT>      처리할 입력 파일
-  -o, --output <OUTPUT>    출력 파일 (기본값: 표준 출력)
-  -v, --verbose            상세 로그 활성화
-  -j, --threads <THREADS>  작업자 스레드 수 [기본값: 4]
-  -h, --help               도움말 출력
-  -V, --version            버전 출력
+🟢 **초급 과정** — 아래 기능을 구현해 보세요.
+1. 사용자의 이름을 입력받습니다.
+2. 입력받은 이름이 비어있다면 "이름을 입력하지 않으셨습니다."를 출력합니다.
+3. 이름이 있다면 "안녕하세요, [이름]님!"을 출력합니다.
+
+```rust
+// [힌트]
+// 1. io::stdin().read_line() 사용
+// 2. .trim()으로 입력 끝의 줄바꿈 제거
+// 3. .is_empty()로 빈 문자열 확인
 ```
 
-```csharp
-// System.CommandLine을 사용한 C# 코드 (더 많은 보일러플레이트 필요):
-var inputOption = new Option<string>("--input", "입력 파일") { IsRequired = true };
-var verboseOption = new Option<bool>("--verbose", "상세 로그 활성화");
-var rootCommand = new RootCommand("단순한 파일 처리기");
-rootCommand.AddOption(inputOption);
-rootCommand.AddOption(verboseOption);
-rootCommand.SetHandler((input, verbose) => { /* ... */ }, inputOption, verboseOption);
-await rootCommand.InvokeAsync(args);
-// clap의 derive 매크로 방식이 훨씬 간결하고 타입 안전합니다.
-```
-
-| C# | Rust | 비고 |
-|----|------|-------|
-| `Console.ReadLine()` | `io::stdin().read_line(&mut buf)` | 버퍼를 제공해야 하며 `Result`를 반환함 |
-| `int.TryParse(s, out n)` | `s.parse::<i32>()` | `Result<i32, ParseIntError>`를 반환함 |
-| `args[0]` | `env::args().nth(1)` | Rust의 args[0]은 프로그램 이름임 |
-| `Environment.GetEnvironmentVariable` | `env::var("KEY")` | null이 아닌 `Result`를 반환함 |
-| `System.CommandLine` | `clap` | Derive 기반, 자동 도움말 생성 |
-
-***

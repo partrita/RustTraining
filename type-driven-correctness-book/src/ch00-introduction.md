@@ -1,92 +1,90 @@
-# Type-Driven Correctness in Rust
+# Rust의 타입 주도 올바름 (Type-Driven Correctness)
 
-## Speaker Intro
+## 저자 소개
 
-- Principal Firmware Architect in Microsoft SCHIE (Silicon and Cloud Hardware Infrastructure Engineering) team
-- Industry veteran with expertise in security, systems programming (firmware, operating systems, hypervisors), CPU and platform architecture, and C++ systems
-- Started programming in Rust in 2017 (@AWS EC2), and have been in love with the language ever since
+- Microsoft SCHIE (Silicon and Cloud Hardware Infrastructure Engineering) 팀의 수석 펌웨어 아키텍트
+- 보안, 시스템 프로그래밍(펌웨어, 운영체제, 하이퍼바이저), CPU 및 플랫폼 아키텍처, C++ 시스템 분야의 업계 전문가
+- 2017년(@AWS EC2)부터 Rust로 프로그래밍을 시작했으며, 이후 이 언어의 매력에 깊이 빠져 있습니다.
 
 ---
 
-A practical guide to using Rust's type system to make entire classes of bugs **impossible to compile**. While the companion [Rust Patterns](../../rust-patterns-book/src/SUMMARY.md) book covers the mechanics (traits, associated types, type-state), this guide shows how to **apply** those mechanics to real-world domains — hardware diagnostics, cryptography, protocol validation, and embedded systems.
+이 책은 Rust의 타입 시스템을 사용하여 **컴파일 자체가 불가능한** 방식으로 버그의 전체 클래스를 제거하는 실전을 다룹니다. 자매서인 [Rust 패턴](../../rust-patterns-book/src/SUMMARY.md)이 메커니즘(트레이트, 연관 타입, 타입 상태)을 다룬다면, 이 가이드는 하드웨어 진단, 암호학, 프로토콜 검증, 임베디드 시스템과 같은 실제 환경에 이러한 메커니즘을 **적용**하는 방법을 보여줍니다.
 
-Every pattern here follows one principle: **push invariants from runtime checks into the type system so the compiler enforces them.**
+여기에 소개된 모든 패턴은 한 가지 원칙을 따릅니다: **런타임 검사를 타입 시스템으로 밀어 넣어 컴파일러가 이를 강제하도록 만드는 것입니다.**
 
-## How to Use This Book
+## 이 책의 활용 방법
 
-### Difficulty Legend
+### 난이도 범례
 
-| Symbol | Level | Audience |
+| 기호 | 레벨 | 대상 |
 |:------:|-------|----------|
-| 🟢 | Introductory | Comfortable with ownership + traits |
-| 🟡 | Intermediate | Familiar with generics + associated types |
-| 🔴 | Advanced | Ready for type-state, phantom types, and session types |
+| 🟢 | 입문 (Introductory) | 소유권 및 트레이트에 익숙한 분 |
+| 🟡 | 중급 (Intermediate) | 제네릭 및 연관 타입에 익숙한 분 |
+| 🔴 | 고급 (Advanced) | 타입 상태, 팬텀 타입, 세션 타입을 배울 준비가 된 분 |
 
-### Pacing Guide
+### 맞춤형 학습 경로
 
-| Goal | Path | Time |
+| 목표 | 경로 | 예상 시간 |
 |------|------|------|
-| **Quick overview** | ch01, ch13 (reference card) | 30 min |
-| **IPMI / BMC developer** | ch02, ch05, ch07, ch10, ch17 | 2.5 hrs |
-| **GPU / PCIe developer** | ch02, ch06, ch09, ch10, ch15 | 2.5 hrs |
-| **Redfish implementer** | ch02, ch05, ch07, ch08, ch17, ch18 | 3 hrs |
-| **Framework / infrastructure** | ch04, ch08, ch11, ch14, ch18 | 2.5 hrs |
-| **New to correct-by-construction** | ch01 → ch10 in order, then ch12 exercises | 4 hrs |
-| **Full deep dive** | All chapters sequentially | 7 hrs |
+| **빠른 개요** | 01장, 17장 (참조 카드) | 30분 |
+| **IPMI / BMC 개발자** | 02, 05, 07, 10, 13장 | 2.5시간 |
+| **GPU / PCIe 개발자** | 02, 06, 09, 10, 15장 | 2.5시간 |
+| **Redfish 구현자** | 02, 05, 07, 08, 13, 14장 | 3시간 |
+| **프레임워크 / 인프라** | 04, 08, 11, 15, 18장 | 2.5시간 |
+| **설계에 의한 올바름 입문** | 01장 → 10장 순서대로, 이후 16장 연습 문제 | 4시간 |
+| **전체 심층 분석** | 모든 장을 순서대로 학습 | 7시간 |
 
-### Annotated Table of Contents
+### 장별 목차 요점
 
-| Ch | Title | Difficulty | Key Idea |
+| 장 | 제목 | 난이도 | 핵심 아이디어 |
 |----|-------|:----------:|----------|
-| 1 | The Philosophy — Why Types Beat Tests | 🟢 | Three levels of correctness; types as compiler-checked guarantees |
-| 2 | Typed Command Interfaces | 🟡 | Associated types bind request → response |
-| 3 | Single-Use Types | 🟡 | Move semantics as linear types for crypto |
-| 4 | Capability Tokens | 🟡 | Zero-sized proof-of-authority tokens |
-| 5 | Protocol State Machines | 🔴 | Type-state for IPMI sessions + PCIe LTSSM |
-| 6 | Dimensional Analysis | 🟢 | Newtype wrappers prevent unit mix-ups |
-| 7 | Validated Boundaries | 🟡 | Parse once at the edge, carry proof in types |
-| 8 | Capability Mixins | 🟡 | Ingredient traits + blanket impls |
-| 9 | Phantom Types | 🟡 | PhantomData for register width, DMA direction |
-| 10 | Putting It All Together | 🟡 | All 7 patterns in one diagnostic platform |
-| 11 | Fourteen Tricks from the Trenches | 🟡 | Sentinel→Option, sealed traits, builders, etc. |
-| 12 | Exercises | 🟡 | Six capstone problems with solutions |
-| 13 | Reference Card | — | Pattern catalogue + decision flowchart |
-| 14 | Testing Type-Level Guarantees | 🟡 | trybuild, proptest, cargo-show-asm |
-| 15 | Const Fn | 🟠 | Compile-time proofs for memory maps, registers, bitfields |
-| 16 | Send & Sync | 🟠 | Compile-time concurrency proofs |
-| 17 | Redfish Client Walkthrough | 🟡 | Eight patterns composed into a type-safe Redfish client |
-| 18 | Redfish Server Walkthrough | 🟡 | Builder type-state, source tokens, health rollup, mixins |
+| 1 | 철학 — 왜 타입이 테스트보다 뛰어난가 | 🟢 | 세 가지 수준의 올바름; 컴파일러가 검증하는 보증으로서의 타입 |
+| 2 | 타입이 지정된 명령 인터페이스 | 🟡 | 요청 → 응답을 연결하는 연관 타입 |
+| 3 | 단회용 타입 | 🟡 | 암호학을 위한 선형 타입으로서의 이동 의미론 |
+| 4 | 역량 토큰 | 🟡 | 제로 비용 권한 증명 토큰 |
+| 5 | 프로토콜 상태 머신 | 🔴 | IPMI 세션 및 PCIe LTSSM을 위한 타입 상태 |
+| 6 | 차원 분석 | 🟢 | 컴파일러가 단위를 검사하게 만드는 뉴타입 래퍼 |
+| 7 | 유효성 검증 경계 | 🟡 | 경계에서 한 번 파싱하고, 타입에 증거를 담아라 |
+| 8 | 의무 믹스인 | 🟡 | 재료 트레이트 및 담요 구현(Blanket impls) |
+| 9 | 팬텀 타입 | 🟡 | 레지스터 너비, DMA 방향 등 리소스 추적용 PhantomData |
+| 10 | 종합 정리 | 🟡 | 7가지 패턴을 하나의 진단 플랫폼에 통합 |
+| 11 | 실전에서 유용한 14가지 팁 | 🟡 | Sentinel→Option, 봉인된 트레이트, 빌더 등 |
+| 12 | 연습 문제 | 🟡 | 정답이 포함된 6가지 종합 문제 |
+| 13 | 참조 카드 | — | 패턴 카탈로그 및 의사결정 순서도 |
+| 14 | 타입 수준 보장 테스트하기 | 🟡 | trybuild, proptest, cargo-show-asm |
+| 15 | Const Fn | 🟡 | 메모리 맵, 레지스터, 비트필드에 대한 컴파일 타임 증명 |
+| 16 | Send & Sync | 🟡 | 컴파일 타임 동시성 증명 |
+| 17 | Redfish 클라이언트 가이드 | 🟡 | 8가지 패턴이 결합된 타입 안전한 Redfish 클라이언트 |
+| 18 | Redfish 서버 가이드 | 🟡 | 빌더 타입 상태, 소스 토큰, 상태 롤업, 믹스인 |
 
-## Prerequisites
+## 선수 지식
 
-| Concept | Where to learn it |
+| 개념 | 학습 소스 |
 |---------|-------------------|
-| Ownership and borrowing | [Rust Patterns](../rust-patterns-book/src/SUMMARY.md), ch01 |
-| Traits and associated types | [Rust Patterns](../rust-patterns-book/src/SUMMARY.md), ch02 |
-| Newtypes and type-state | [Rust Patterns](../rust-patterns-book/src/SUMMARY.md), ch03 |
-| PhantomData | [Rust Patterns](../rust-patterns-book/src/SUMMARY.md), ch04 |
-| Generics and trait bounds | [Rust Patterns](../rust-patterns-book/src/SUMMARY.md), ch01 |
+| 소유권과 빌림 | [Rust 패턴](../rust-patterns-book/src/SUMMARY.md) 7장 |
+| 트레이트와 연관 타입 | [Rust 패턴](../rust-patterns-book/src/SUMMARY.md) 2장 |
+| 뉴타입과 타입 상태 | [Rust 패턴](../rust-patterns-book/src/SUMMARY.md) 3장 |
+| PhantomData | [Rust 패턴](../rust-patterns-book/src/SUMMARY.md) 4장 |
+| 제네릭과 트레이트 경계 | [Rust 패턴](../rust-patterns-book/src/SUMMARY.md) 1장 |
 
-## The Correct-by-Construction Spectrum
+## 설계에 의한 올바름(Correct-by-Construction) 스펙트럼
 
 ```text
-← Less Safe                                                    More Safe →
+← 덜 안전함                                                    더 안전함 →
 
-Runtime checks      Unit tests        Property tests      Correct by Construction
+런타임 검증         단위 테스트        속성 기반 테스트      설계에 의한 올바름
 ─────────────       ──────────        ──────────────      ──────────────────────
 
 if temp > 100 {     #[test]           proptest! {         struct Celsius(f64);
-  panic!("too       fn test_temp() {    |t in 0..200| {   // Can't confuse with Rpm
-  hot");              assert!(          assert!(...)       // at the type level
+  panic!("너무      fn test_temp() {    |t in 0..200| {   // 타입 수준에서 Rpm과
+  뜨거움");            assert!(          assert!(...)       // 혼동할 수 없음
 }                     check(42));     }
                     }                 }
-                                                          Invalid program?
-Invalid program?    Invalid program?  Invalid program?    Won't compile.
-Crashes in prod.    Fails in CI.      Fails in CI         Never exists.
-                                      (probabilistic).
+                                                          잘못된 프로그램?
+잘못된 프로그램?    잘못된 프로그램?  잘못된 프로그램?    컴파일되지 않음.
+실제 서비스 중단.   CI 단계에서 실패.  CI 단계에서 실패   절대 존재할 수 없음.
+                                      (확률적).
 ```
 
-This guide operates at the rightmost position — where bugs don't exist because the type system **cannot express them**.
-
----
+이 가이드는 가장 오른쪽 지점에서 작동합니다. 즉, 타입 시스템이 버그를 **표현할 수 없기 때문에** 버그가 존재하지 않는 영역입니다.
 

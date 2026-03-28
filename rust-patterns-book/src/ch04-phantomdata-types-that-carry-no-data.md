@@ -1,105 +1,59 @@
-# 4. PhantomData — Types That Carry No Data 🔴
+# 4. PhantomData: 데이터를 갖지 않는 타입 🔴
 
-> **What you'll learn:**
-> - Why `PhantomData<T>` exists and the three problems it solves
-> - Lifetime branding for compile-time scope enforcement
-> - The unit-of-measure pattern for dimension-safe arithmetic
-> - Variance (covariant, contravariant, invariant) and how PhantomData controls it
+> **학습 목표:**
+> - `PhantomData<T>`가 왜 존재하는지, 그리고 이것이 해결하는 세 가지 문제를 이해합니다.
+> - 컴파일 타임에 스코프를 강제하기 위한 **수명 브랜딩(Lifetime branding)**을 익힙니다.
+> - 차원이 안전한 연산을 위한 **단위 시스템(Unit-of-measure)** 패턴을 배웁니다.
+> - **변형성(Variance: 공변, 반공변, 불변)**의 개념과 `PhantomData`를 통한 제어 방법을 마스터합니다.
 
-## What PhantomData Solves
+---
 
-`PhantomData<T>` is a zero-sized type that tells the compiler "this struct is logically associated with `T`, even though it doesn't contain a `T`." It affects variance, drop checking, and auto-trait inference — without using any memory.
+### PhantomData가 해결하는 것
+
+`PhantomData<T>`는 크기가 0인 타입(ZST)으로, 컴파일러에게 "이 구조체는 실제로 `T`를 포함하지는 않지만, 논리적으로는 `T`와 연관되어 있다"라고 알려주는 역할을 합니다. 이는 메모리를 전혀 사용하지 않으면서 **변형성(Variance)**, **드롭 체크(Drop check)**, **자동 트레이트 추론**에 영향을 미칩니다.
 
 ```rust
 use std::marker::PhantomData;
 
-// Without PhantomData:
+// PhantomData가 없는 경우:
 struct Slice<'a, T> {
     ptr: *const T,
     len: usize,
-    // Problem: compiler doesn't know this struct borrows from 'a
-    // or that it's associated with T for drop-check purposes
+    // 문제: 컴파일러는 이 구조체가 'a 수명 동안 데이터를 빌려오고 있는지,
+    // 또는 드롭 체크 시 T를 고려해야 하는지 알 수 없습니다.
 }
 
-// With PhantomData:
+// PhantomData를 사용하는 경우:
 struct Slice<'a, T> {
     ptr: *const T,
     len: usize,
     _marker: PhantomData<&'a T>,
-    // Now the compiler knows:
-    // 1. This struct borrows data with lifetime 'a
-    // 2. It's covariant over 'a (lifetimes can shrink)
-    // 3. Drop check considers T
+    // 이제 컴파일러는 다음을 알게 됩니다:
+    // 1. 이 구조체는 'a 수명의 데이터를 빌려온다.
+    // 2. 'a에 대해 공변(Covariant)이다 (수명이 줄어들 수 있음).
+    // 3. 드롭 체크 시 T 타입을 고려한다.
 }
 ```
 
-**The three jobs of PhantomData**:
+**PhantomData의 세 가지 역할:**
 
-| Job | Example | What It Does |
-|-----|---------|-------------|
-| **Lifetime binding** | `PhantomData<&'a T>` | Struct is treated as borrowing `'a` |
-| **Ownership simulation** | `PhantomData<T>` | Drop check assumes struct owns a `T` |
-| **Variance control** | `PhantomData<fn(T)>` | Makes struct contravariant over `T` |
+| 역할 | 예시 | 설명 |
+| :--- | :--- | :--- |
+| **수명 바인딩** | `PhantomData<&'a T>` | 구조체가 `'a` 수명을 빌리고 있는 것으로 취급함 |
+| **소유권 시뮬레이션** | `PhantomData<T>` | 드롭 체크 시 구조체가 `T`를 소유한 것으로 간주함 |
+| **변형성 제어** | `PhantomData<fn(T)>` | 구조체를 `T`에 대해 반공변(Contravariant)으로 만듦 |
 
-### Lifetime Branding
+---
 
-Use `PhantomData` to prevent mixing values from different "sessions" or "contexts":
+### 단위 시스템 (Unit-of-Measure) 패턴
+
+서로 호환되지 않는 단위(미터, 초 등)를 섞어서 연산하는 실수를 컴파일 타임에 방지할 수 있습니다. 런타임 비용은 제로입니다.
 
 ```rust
 use std::marker::PhantomData;
 
-/// A handle that's valid only within a specific arena's lifetime
-struct ArenaHandle<'arena> {
-    index: usize,
-    _brand: PhantomData<&'arena ()>,
-}
-
-struct Arena {
-    data: Vec<String>,
-}
-
-impl Arena {
-    fn new() -> Self {
-        Arena { data: Vec::new() }
-    }
-
-    /// Allocate a string and return a branded handle
-    fn alloc<'a>(&'a mut self, value: String) -> ArenaHandle<'a> {
-        let index = self.data.len();
-        self.data.push(value);
-        ArenaHandle { index, _brand: PhantomData }
-    }
-
-    /// Look up by handle — only accepts handles from THIS arena
-    fn get<'a>(&'a self, handle: ArenaHandle<'a>) -> &'a str {
-        &self.data[handle.index]
-    }
-}
-
-fn main() {
-    let mut arena1 = Arena::new();
-    let handle1 = arena1.alloc("hello".to_string());
-
-    // Can't use handle1 with a different arena — lifetimes won't match
-    // let mut arena2 = Arena::new();
-    // arena2.get(handle1); // ❌ Lifetime mismatch
-
-    println!("{}", arena1.get(handle1)); // ✅
-}
-```
-
-### Unit-of-Measure Pattern
-
-Prevent mixing incompatible units at compile time, with zero runtime cost:
-
-```rust
-use std::marker::PhantomData;
-use std::ops::{Add, Mul};
-
-// Unit marker types (zero-sized)
 struct Meters;
 struct Seconds;
-struct MetersPerSecond;
 
 #[derive(Debug, Clone, Copy)]
 struct Quantity<Unit> {
@@ -107,288 +61,54 @@ struct Quantity<Unit> {
     _unit: PhantomData<Unit>,
 }
 
-impl<U> Quantity<U> {
-    fn new(value: f64) -> Self {
-        Quantity { value, _unit: PhantomData }
-    }
-}
-
-// Can only add same units:
-impl<U> Add for Quantity<U> {
-    type Output = Quantity<U>;
-    fn add(self, rhs: Self) -> Self::Output {
-        Quantity::new(self.value + rhs.value)
-    }
-}
-
-// Meters / Seconds = MetersPerSecond (custom trait)
-impl std::ops::Div<Quantity<Seconds>> for Quantity<Meters> {
-    type Output = Quantity<MetersPerSecond>;
-    fn div(self, rhs: Quantity<Seconds>) -> Quantity<MetersPerSecond> {
-        Quantity::new(self.value / rhs.value)
-    }
-}
-
 fn main() {
     let dist = Quantity::<Meters>::new(100.0);
     let time = Quantity::<Seconds>::new(9.58);
-    let speed = dist / time; // Quantity<MetersPerSecond>
-    println!("Speed: {:.2} m/s", speed.value); // 10.44 m/s
-
-    // let nonsense = dist + time; // ❌ Compile error: can't add Meters + Seconds
+    
+    // let nonsense = dist + time; // ❌ 컴파일 에러: Meters와 Seconds는 더할 수 없음
 }
 ```
-
-> **This is pure type-system magic** — `PhantomData<Meters>` is zero-sized,
-> so `Quantity<Meters>` has the same layout as `f64`. No wrapper overhead
-> at runtime, but full unit safety at compile time.
-
-### PhantomData and Drop Check
-
-When the compiler checks whether a struct's destructor might access expired data, it uses `PhantomData` to decide:
-
-```rust
-use std::marker::PhantomData;
-
-// PhantomData<T> — compiler assumes we MIGHT drop a T
-// This means T must outlive our struct
-struct OwningSemantic<T> {
-    ptr: *const T,
-    _marker: PhantomData<T>,  // "I logically own a T"
-}
-
-// PhantomData<*const T> — compiler assumes we DON'T own T
-// More permissive — T doesn't need to outlive us
-struct NonOwningSemantic<T> {
-    ptr: *const T,
-    _marker: PhantomData<*const T>,  // "I just point to T"
-}
-```
-
-**Practical rule**: When wrapping raw pointers, choose PhantomData carefully:
-- Writing a container that owns its data? → `PhantomData<T>`
-- Writing a view/reference type? → `PhantomData<&'a T>` or `PhantomData<*const T>`
-
-### Variance — Why PhantomData's Type Parameter Matters
-
-**Variance** determines whether a generic type can be substituted with a sub- or
-super-type (in Rust, "subtype" means "has a longer lifetime"). Getting variance
-wrong causes either rejected-good-code or unsound-accepted-code.
-
-```mermaid
-graph LR
-    subgraph Covariant
-        direction TB
-        A1["&'long T"] -->|"can become"| A2["&'short T"]
-    end
-
-    subgraph Contravariant
-        direction TB
-        B1["fn(&'short T)"] -->|"can become"| B2["fn(&'long T)"]
-    end
-
-    subgraph Invariant
-        direction TB
-        C1["&'a mut T"] ---|"NO substitution"| C2["&'b mut T"]
-    end
-
-    style A1 fill:#d4efdf,stroke:#27ae60,color:#000
-    style A2 fill:#d4efdf,stroke:#27ae60,color:#000
-    style B1 fill:#e8daef,stroke:#8e44ad,color:#000
-    style B2 fill:#e8daef,stroke:#8e44ad,color:#000
-    style C1 fill:#fadbd8,stroke:#e74c3c,color:#000
-    style C2 fill:#fadbd8,stroke:#e74c3c,color:#000
-```
-
-#### The Three Variances
-
-| Variance | Meaning | "Can I substitute…" | Rust example |
-|----------|---------|---------------------|--------------|
-| **Covariant** | Subtype flows through | `'long` where `'short` expected ✅ | `&'a T`, `Vec<T>`, `Box<T>` |
-| **Contravariant** | Subtype flows *against* | `'short` where `'long` expected ✅ | `fn(T)` (in parameter position) |
-| **Invariant** | No substitution allowed | Neither direction ✅ | `&mut T`, `Cell<T>`, `UnsafeCell<T>` |
-
-#### Why `&'a T` is Covariant Over `'a`
-
-```rust
-fn print_str(s: &str) {
-    println!("{s}");
-}
-
-fn main() {
-    let owned = String::from("hello");
-    // owned lives for the entire function ('long)
-    // print_str expects &'_ str ('short — just for the call)
-    print_str(&owned); // ✅ Covariance: 'long → 'short is safe
-    // A longer-lived reference can always be used where a shorter one is needed.
-}
-```
-
-#### Why `&mut T` is Invariant Over `T`
-
-```rust
-// If &mut T were covariant over T, this would compile:
-fn evil(s: &mut &'static str) {
-    // We could write a shorter-lived &str into a &'static str slot!
-    let local = String::from("temporary");
-    // *s = &local; // ← Would create a dangling &'static str
-}
-
-// Invariance prevents this: &'static str ≠ &'a str when mutating.
-// The compiler rejects the substitution entirely.
-```
-
-#### How PhantomData Controls Variance
-
-`PhantomData<X>` gives your struct the **same variance as `X`**:
-
-```rust
-use std::marker::PhantomData;
-
-// Covariant over 'a — a Ref<'long> can be used as Ref<'short>
-struct Ref<'a, T> {
-    ptr: *const T,
-    _marker: PhantomData<&'a T>,  // Covariant over 'a, covariant over T
-}
-
-// Invariant over T — prevents unsound lifetime shortening of T
-struct MutRef<'a, T> {
-    ptr: *mut T,
-    _marker: PhantomData<&'a mut T>,  // Covariant over 'a, INVARIANT over T
-}
-
-// Contravariant over T — useful for callback containers
-struct CallbackSlot<T> {
-    _marker: PhantomData<fn(T)>,  // Contravariant over T
-}
-```
-
-**PhantomData variance cheat sheet**:
-
-| PhantomData type | Variance over `T` | Variance over `'a` | Use when |
-|------------------|--------------------|--------------------|-----------|
-| `PhantomData<T>` | Covariant | — | You logically own a `T` |
-| `PhantomData<&'a T>` | Covariant | Covariant | You borrow a `T` with lifetime `'a` |
-| `PhantomData<&'a mut T>` | **Invariant** | Covariant | You mutably borrow `T` |
-| `PhantomData<*const T>` | Covariant | — | Non-owning pointer to `T` |
-| `PhantomData<*mut T>` | **Invariant** | — | Non-owning mutable pointer |
-| `PhantomData<fn(T)>` | **Contravariant** | — | `T` appears in argument position |
-| `PhantomData<fn() -> T>` | Covariant | — | `T` appears in return position |
-| `PhantomData<fn(T) -> T>` | **Invariant** | — | `T` in both positions cancels out |
-
-#### Worked Example: Why This Matters in Practice
-
-```rust
-use std::marker::PhantomData;
-
-// A token that brands values with a session lifetime.
-// MUST be covariant over 'a — otherwise callers can't shorten
-// the lifetime when passing to functions that need a shorter borrow.
-struct SessionToken<'a> {
-    id: u64,
-    _brand: PhantomData<&'a ()>,  // ✅ Covariant — callers can shorten 'a
-    // _brand: PhantomData<fn(&'a ())>,  // ❌ Contravariant — breaks ergonomics
-    // _brand: PhantomData<&'a mut ()>;  // Still covariant over 'a (invariant over T, but T is fixed as ())
-}
-
-fn use_token(token: &SessionToken<'_>) {
-    println!("Using token {}", token.id);
-}
-
-fn main() {
-    let token = SessionToken { id: 42, _brand: PhantomData };
-    use_token(&token); // ✅ Works because SessionToken is covariant over 'a
-}
-```
-
-> **Decision rule**: Start with `PhantomData<&'a T>` (covariant). Switch to
-> `PhantomData<&'a mut T>` (invariant) only if your abstraction hands out
-> mutable access to `T`. Use `PhantomData<fn(T)>` (contravariant) almost
-> never — it's only correct for callback-storage scenarios.
-
-> **Key Takeaways — PhantomData**
-> - `PhantomData<T>` carries type/lifetime information without runtime cost
-> - Use it for lifetime branding, variance control, and unit-of-measure patterns
-> - Drop check: `PhantomData<T>` tells the compiler your type logically owns a `T`
-
-> **See also:** [Ch 3 — Newtype & Type-State](ch03-the-newtype-and-type-state-patterns.md) for type-state patterns that use PhantomData. [Ch 11 — Unsafe Rust](ch11-unsafe-rust-controlled-danger.md) for how PhantomData interacts with raw pointers.
+> **타입 시스템의 마법**: `PhantomData<Meters>`는 크기가 0이므로, `Quantity<Meters>`는 메모리 상에서 `f64`와 동일한 레이아웃을 가집니다. 성능 저하 없이 완벽한 타입 안전성을 제공합니다.
 
 ---
 
-### Exercise: Unit-of-Measure with PhantomData ★★ (~30 min)
+### 변형성(Variance) — 왜 PhantomData의 타입 파라미터가 중요한가?
 
-Extend the unit-of-measure pattern to support:
-- `Meters`, `Seconds`, `Kilograms`
-- Addition of same units
-- Multiplication: `Meters * Meters = SquareMeters`
-- Division: `Meters / Seconds = MetersPerSecond`
+변형성은 제네릭 타입이 하위 타입이나 상위 타입으로 대체될 수 있는지를 결정합니다. Rust에서 하위 타입은 보통 "더 긴 수명을 가진 타입"을 의미합니다.
 
-<details>
-<summary>🔑 Solution</summary>
+#### 세 가지 변형성 요약:
 
-```rust
-use std::marker::PhantomData;
-use std::ops::{Add, Mul, Div};
+| 변형성 | 의미 | "대체가 가능한가?" | Rust 예시 |
+| :--- | :--- | :--- | :--- |
+| **공변 (Covariant)** | 하위 타입 관계가 유지됨 | `'long`을 `'short`가 필요한 곳에 사용 ✅ | `&'a T`, `Vec<T>`, `Box<T>` |
+| **반공변 (Contravariant)** | 하위 타입 관계가 역전됨 | `'short`를 `'long`이 필요한 곳에 사용 ✅ | `fn(T)` (인자 위치) |
+| **불변 (Invariant)** | 대체 불가능 | 수명이 정확히 일치해야 함 ✅ | `&mut T`, `Cell<T>` |
 
-#[derive(Clone, Copy)]
-struct Meters;
-#[derive(Clone, Copy)]
-struct Seconds;
-#[derive(Clone, Copy)]
-struct Kilograms;
-#[derive(Clone, Copy)]
-struct SquareMeters;
-#[derive(Clone, Copy)]
-struct MetersPerSecond;
+#### PhantomData 변형성 치트 시트:
 
-#[derive(Debug, Clone, Copy)]
-struct Qty<U> {
-    value: f64,
-    _unit: PhantomData<U>,
-}
+| PhantomData 타입 | T에 대한 변형성 | 'a에 대한 변형성 | 사용 시점 |
+| :--- | :--- | :--- | :--- |
+| `PhantomData<T>` | **공변** | — | `T`를 논리적으로 소유할 때 |
+| `PhantomData<&'a T>` | **공변** | **공변** | `T`를 `'a` 수명 동안 빌릴 때 |
+| `PhantomData<&'a mut T>` | **불변** | **공변** | `T`를 가변으로 빌릴 때 |
+| `PhantomData<*const T>` | **공변** | — | 소유하지 않는 불변 포인터 |
+| `PhantomData<*mut T>` | **불변** | — | 소유하지 않는 가변 포인터 |
+| `PhantomData<fn(T)>` | **반공변** | — | `T`가 인자 위치에 올 때 (콜백 등) |
 
-impl<U> Qty<U> {
-    fn new(v: f64) -> Self { Qty { value: v, _unit: PhantomData } }
-}
+---
 
-impl<U> Add for Qty<U> {
-    type Output = Qty<U>;
-    fn add(self, rhs: Self) -> Self::Output { Qty::new(self.value + rhs.value) }
-}
+### 📝 연습 문제: PhantomData를 활용한 단위 시스템 확장 ★★ (~30분)
 
-impl Mul<Qty<Meters>> for Qty<Meters> {
-    type Output = Qty<SquareMeters>;
-    fn mul(self, rhs: Qty<Meters>) -> Qty<SquareMeters> {
-        Qty::new(self.value * rhs.value)
-    }
-}
+단위 시스템 패턴을 확장하여 다음을 지원해 보세요:
+- `Meters`, `Seconds`, `Kilograms` 단위 정의
+- 동일 단위 간의 덧셈 지원
+- 곱셈 지원: `Meters * Meters = SquareMeters`
+- 나눗셈 지원: `Meters / Seconds = MetersPerSecond`
 
-impl Div<Qty<Seconds>> for Qty<Meters> {
-    type Output = Qty<MetersPerSecond>;
-    fn div(self, rhs: Qty<Seconds>) -> Qty<MetersPerSecond> {
-        Qty::new(self.value / rhs.value)
-    }
-}
+---
 
-fn main() {
-    let width = Qty::<Meters>::new(5.0);
-    let height = Qty::<Meters>::new(3.0);
-    let area = width * height; // Qty<SquareMeters>
-    println!("Area: {:.1} m²", area.value);
-
-    let dist = Qty::<Meters>::new(100.0);
-    let time = Qty::<Seconds>::new(9.58);
-    let speed = dist / time;
-    println!("Speed: {:.2} m/s", speed.value);
-
-    let sum = width + height; // Same unit ✅
-    println!("Sum: {:.1} m", sum.value);
-
-    // let bad = width + time; // ❌ Compile error: can't add Meters + Seconds
-}
-```
-
-</details>
-
-***
+### 📌 요약
+- `PhantomData<T>`는 런타임 비용 없이 타입/수명 정보를 전달합니다.
+- 수명 브랜딩, 변형성 제어, 단위 시스템 패턴 등에 사용됩니다.
+- **드롭 체크**: `PhantomData<T>`는 해당 타입이 논리적으로 `T`를 소유하고 있음을 컴파일러에게 알려줍니다.
 

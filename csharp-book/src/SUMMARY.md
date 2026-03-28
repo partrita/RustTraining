@@ -37,7 +37,7 @@
 # 제2부 — 동시성 및 시스템 (Concurrency & Systems)
 
 - [13. 동시성](ch13-concurrency.md)
-    - [Async/Await 심층 탐구](ch13-1-asyncawait-deep-dive.md)
+    - [비동기 심층 분석](ch13-1-asyncawait-deep-dive.md)
 - [14. Unsafe Rust 및 FFI](ch14-unsafe-rust-and-ffi.md)
     - [테스트](ch14-1-testing.md)
 
@@ -58,3 +58,4 @@
 # 캡스톤 프로젝트 (Capstone)
 
 - [17. 캡스톤 프로젝트: CLI 날씨 도구 만들기](ch17-capstone-project.md)
+

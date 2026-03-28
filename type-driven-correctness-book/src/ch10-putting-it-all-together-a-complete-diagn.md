@@ -1,267 +1,81 @@
-# Putting It All Together — A Complete Diagnostic Platform 🟡
+# 10. 모든 조각의 결합 — 완성된 진단 플랫폼 🟡
 
-> **What you'll learn:** How all seven core patterns (ch02–ch09) compose into a single diagnostic workflow — authentication, sessions, typed commands, audit tokens, dimensional results, validated data, and phantom-typed registers — with zero total runtime overhead.
+> **학습 목표:** 지금까지 배운 7가지 핵심 패턴(02~09장)이 어떻게 하나의 진단 워크플로우로 조화롭게 결합되는지 배웁니다. 인증, 세션 관리, 타이핑된 명령, 감사 토큰, 차원 결과, 검증된 데이터, 그리고 팬텀 타입 레지스터가 **런타임 오버헤드 없이** 어떻게 함께 작동하는지 확인합니다.
 >
-> **Cross-references:** Every core pattern chapter (ch02–ch09), [ch14](ch14-testing-type-level-guarantees.md) (testing these guarantees)
+> **관련 장:** 02~09장의 모든 핵심 패턴, [14장](ch14-testing-type-level-guarantees.md) (가정에 대한 테스트)
 
-## Goal
+---
 
-This chapter combines **seven patterns** from chapters 2–9 into a single, realistic
-diagnostic workflow. We'll build a server health check that:
+### 목표: 7가지 패턴의 통합
 
-1. **Authenticates** (capability token — ch04)
-2. **Opens an IPMI session** (type-state — ch05)
-3. **Sends typed commands** (typed commands — ch02)
-4. **Uses single-use tokens** for audit logging (single-use types — ch03)
-5. **Returns dimensional results** (dimensional analysis — ch06)
-6. **Validates FRU data** (validated boundaries — ch07)
-7. **Reads typed registers** (phantom types — ch09)
+이 장에서는 앞서 배운 패턴들을 결합하여 실제와 유사한 서버 상태 점검 워크플로우를 구축합니다.
+
+1. **인증** (역량 토큰 — 04장)
+2. **IPMI 세션 열기** (타입 상태 — 05장)
+3. **타이핑된 명령 전송** (타입 지성 명령 — 02장)
+4. **감사 로그 작성을 위한 단회용 토큰** (단회용 타입 — 03장)
+5. **차원 분석 결과 반환** (차원 분석 — 06장)
+6. **FRU 데이터 검증** (유효성 검증 경계 — 07장)
+7. **타이핑된 레지스터 읽기** (팬텀 타입 — 09장)
+
+---
+
+### 통합 워크플로우 예시 (의사 코드)
 
 ```rust,ignore
-use std::marker::PhantomData;
-use std::io;
-// ──── Pattern 1: Dimensional Types (ch06) ────
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Celsius(pub f64);
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Rpm(pub f64);
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Volts(pub f64);
-
-// ──── Pattern 2: Typed Commands (ch02) ────
-
-/// Same trait shape as ch02, using methods (not associated constants)
-/// for consistency. Associated constants (`const NETFN: u8`) are an
-/// equally valid alternative when the value is truly fixed per type.
-pub trait IpmiCmd {
-    type Response;
-    fn net_fn(&self) -> u8;
-    fn cmd_byte(&self) -> u8;
-    fn payload(&self) -> Vec<u8>;
-    fn parse_response(&self, raw: &[u8]) -> io::Result<Self::Response>;
-}
-
-pub struct ReadTemp { pub sensor_id: u8 }
-impl IpmiCmd for ReadTemp {
-    type Response = Celsius;   // ← dimensional type!
-    fn net_fn(&self) -> u8 { 0x04 }
-    fn cmd_byte(&self) -> u8 { 0x2D }
-    fn payload(&self) -> Vec<u8> { vec![self.sensor_id] }
-    fn parse_response(&self, raw: &[u8]) -> io::Result<Celsius> {
-        if raw.is_empty() {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "empty"));
-        }
-        Ok(Celsius(raw[0] as f64))
-    }
-}
-
-pub struct ReadFanSpeed { pub fan_id: u8 }
-impl IpmiCmd for ReadFanSpeed {
-    type Response = Rpm;
-    fn net_fn(&self) -> u8 { 0x04 }
-    fn cmd_byte(&self) -> u8 { 0x2D }
-    fn payload(&self) -> Vec<u8> { vec![self.fan_id] }
-    fn parse_response(&self, raw: &[u8]) -> io::Result<Rpm> {
-        if raw.len() < 2 {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "need 2 bytes"));
-        }
-        Ok(Rpm(u16::from_le_bytes([raw[0], raw[1]]) as f64))
-    }
-}
-
-// ──── Pattern 3: Capability Token (ch04) ────
-
-pub struct AdminToken { _private: () }
-
-pub fn authenticate(user: &str, pass: &str) -> Result<AdminToken, &'static str> {
-    if user == "admin" && pass == "secret" {
-        Ok(AdminToken { _private: () })
-    } else {
-        Err("authentication failed")
-    }
-}
-
-// ──── Pattern 4: Type-State Session (ch05) ────
-
-pub struct Idle;
-pub struct Active;
-
-pub struct Session<State> {
-    host: String,
-    _state: PhantomData<State>,
-}
-
-impl Session<Idle> {
-    pub fn connect(host: &str) -> Self {
-        Session { host: host.to_string(), _state: PhantomData }
-    }
-
-    pub fn activate(
-        self,
-        _admin: &AdminToken,  // ← requires capability token
-    ) -> Result<Session<Active>, String> {
-        println!("Session activated on {}", self.host);
-        Ok(Session { host: self.host, _state: PhantomData })
-    }
-}
-
-impl Session<Active> {
-    /// Execute a typed command — only available on Active sessions.
-    /// Returns io::Result to propagate transport errors (consistent with ch02).
-    pub fn execute<C: IpmiCmd>(&mut self, cmd: &C) -> io::Result<C::Response> {
-        let raw_response = self.raw_send(cmd.net_fn(), cmd.cmd_byte(), &cmd.payload())?;
-        cmd.parse_response(&raw_response)
-    }
-
-    fn raw_send(&self, _nf: u8, _cmd: u8, _data: &[u8]) -> io::Result<Vec<u8>> {
-        Ok(vec![42, 0x1E]) // stub: raw IPMI response
-    }
-
-    pub fn close(self) { println!("Session closed"); }
-}
-
-// ──── Pattern 5: Single-Use Audit Token (ch03) ────
-
-/// Each diagnostic run gets a unique audit token.
-/// Not Clone, not Copy — ensures each audit entry is unique.
-pub struct AuditToken {
-    run_id: u64,
-}
-
-impl AuditToken {
-    pub fn issue(run_id: u64) -> Self {
-        AuditToken { run_id }
-    }
-
-    /// Consume the token to write an audit log entry.
-    pub fn log(self, message: &str) {
-        println!("[AUDIT run_id={}] {}", self.run_id, message);
-        // token is consumed — can't log the same run_id twice
-    }
-}
-
-// ──── Pattern 6: Validated Boundary (ch07) ────
-// Simplified from ch07's full ValidFru — only the fields needed for this
-// composite example.  See ch07 for the complete TryFrom<RawFruData> version.
-
-pub struct ValidFru {
-    pub board_serial: String,
-    pub product_name: String,
-}
-
-impl ValidFru {
-    pub fn parse(raw: &[u8]) -> Result<Self, &'static str> {
-        if raw.len() < 8 { return Err("FRU too short"); }
-        if raw[0] != 0x01 { return Err("bad FRU version"); }
-        Ok(ValidFru {
-            board_serial: "SN12345".to_string(),  // stub
-            product_name: "ServerX".to_string(),
-        })
-    }
-}
-
-// ──── Pattern 7: Phantom-Typed Registers (ch09) ────
-
-pub struct Width16;
-pub struct Reg<W> { offset: u16, _w: PhantomData<W> }
-
-impl Reg<Width16> {
-    pub fn read(&self) -> u16 { 0x8086 } // stub
-}
-
-pub struct PcieDev {
-    pub vendor_id: Reg<Width16>,
-    pub device_id: Reg<Width16>,
-}
-
-impl PcieDev {
-    pub fn new() -> Self {
-        PcieDev {
-            vendor_id: Reg { offset: 0x00, _w: PhantomData },
-            device_id: Reg { offset: 0x02, _w: PhantomData },
-        }
-    }
-}
-
-// ──── Composite Workflow ────
-
 fn full_diagnostic() -> Result<(), String> {
-    // 1. Authenticate → get capability token
-    let admin = authenticate("admin", "secret")
-        .map_err(|e| e.to_string())?;
+    // 1. 인증 → 역량 토큰 획득
+    let admin = authenticate("admin", "secret")?;
 
-    // 2. Connect and activate session (type-state: Idle → Active)
-    let session = Session::connect("192.168.1.100");
-    let mut session = session.activate(&admin)?;  // requires AdminToken
+    // 2. 세션 연결 및 활성화 (타입 상태: Idle → Active)
+    // 활성화를 위해 관리자 토큰(AdminToken)이 필수로 요구됨
+    let mut session = Session::connect("192.168.1.100").activate(&admin)?;
 
-    // 3. Send typed commands (response type matches command)
-    let temp: Celsius = session.execute(&ReadTemp { sensor_id: 0 })
-        .map_err(|e| e.to_string())?;
-    let fan: Rpm = session.execute(&ReadFanSpeed { fan_id: 1 })
-        .map_err(|e| e.to_string())?;
+    // 3. 타이핑된 명령 전송 (반환 타입이 명령과 일치함)
+    let temp: Celsius = session.execute(&ReadTemp { sensor_id: 0 })?;
+    let fan: Rpm = session.execute(&ReadFanSpeed { fan_id: 1 })?;
 
-    // Type mismatch would be caught:
-    // let wrong: Volts = session.execute(&ReadTemp { sensor_id: 0 })?;
-    //  ❌ ERROR: expected Celsius, found Volts
-
-    // 4. Read phantom-typed PCIe registers
+    // 4. 팬텀 타입이 적용된 PCIe 레지스터 읽기
     let pcie = PcieDev::new();
-    let vid: u16 = pcie.vendor_id.read();  // guaranteed u16
+    let vid: u16 = pcie.vendor_id.read(); // 컴파일러가 u16임을 보장
 
-    // 5. Validate FRU data at the boundary
-    let raw_fru = vec![0x01, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0xFD];
-    let fru = ValidFru::parse(&raw_fru)
-        .map_err(|e| e.to_string())?;
+    // 5. 경계에서 FRU 데이터 검증
+    let fru = ValidFru::parse(&raw_bytes)?;
 
-    // 6. Issue single-use audit token
+    // 6. 단회용 감사 토큰 발행
     let audit = AuditToken::issue(1001);
 
-    // 7. Generate report (all data is typed and validated)
-    let report = format!(
-        "Server: {} (SN: {}), VID: 0x{:04X}, CPU: {:?}, Fan: {:?}",
-        fru.product_name, fru.board_serial, vid, temp, fan,
-    );
+    // 7. 보고서 생성 및 감사 토큰 소비 (두 번 로깅 불가)
+    audit.log(&format!("Server: {}, Temp: {:?}", fru.product_name, temp));
 
-    // 8. Consume audit token — can't log twice
-    audit.log(&report);
-    // audit.log("oops");  // ❌ use of moved value
-
-    // 9. Close session (type-state: Active → dropped)
+    // 8. 세션 종료 (타입 상태: Active → 드롭)
     session.close();
 
     Ok(())
 }
 ```
 
-### What the Compiler Proves
+---
 
-| Bug class | How it's prevented | Pattern |
+### 컴파일러가 증명하는 것들
+
+| 버그 클래스 | 방지 방법 | 관련 패턴 |
 |-----------|-------------------|---------|
-| Unauthenticated access | `activate()` requires `&AdminToken` | Capability token |
-| Command in wrong session state | `execute()` only exists on `Session<Active>` | Type-state |
-| Wrong response type | `ReadTemp::Response = Celsius`, fixed by trait | Typed commands |
-| Unit confusion (°C vs RPM) | `Celsius` ≠ `Rpm` ≠ `Volts` | Dimensional types |
-| Register width mismatch | `Reg<Width16>` returns `u16` | Phantom types |
-| Processing unvalidated data | Must call `ValidFru::parse()` first | Validated boundary |
-| Duplicate audit entries | `AuditToken` is consumed on log | Single-use type |
-| Out-of-order power sequencing | Each step requires previous token | Capability tokens (ch04) |
-
-**Total runtime overhead of ALL these guarantees: zero.**
-
-Every check happens at compile time. The generated assembly is identical to
-hand-written C code with no checks at all — but **C can have bugs, this can't**.
-
-## Key Takeaways
-
-1. **Seven patterns compose seamlessly** — capability tokens, type-state, typed commands, single-use types, dimensional types, validated boundaries, and phantom types all work together.
-2. **The compiler proves eight bug classes impossible** — see the "What the Compiler Proves" table above.
-3. **Zero total runtime overhead** — the generated assembly is identical to unchecked C code.
-4. **Each pattern is independently useful** — you don't need all seven; adopt them incrementally.
-5. **The integration chapter is a design template** — use it as a starting point for your own typed diagnostic workflows.
-6. **From IPMI to Redfish at scale** — ch17 and ch18 apply these same seven patterns (plus capability mixins from ch08) to a full Redfish client and server. The IPMI workflow here is the foundation; the Redfish walkthroughs show how the composition scales to production systems with multiple data sources and schema-version constraints.
+| 비인증 접근 | `activate()` 호출 시 `AdminToken` 요구 | 역량 토큰 |
+| 잘못된 상태에서의 명령 | `execute()`는 오직 `Active` 세션에만 존재 | 타입 상태 |
+| 잘못된 응답 타입 처리 | 명령 트레이트에서 응답 타입을 고정함 | 타입 지정 명령 |
+| 단위 혼동 (°C vs RPM) | `Celsius`와 `Rpm`은 서로 다른 타입임 | 차원 분석 |
+| 레지스터 너비 불일치 | `Reg<Width16>`은 `u16`만 반환함 | 팬텀 타입 |
+| 검증되지 않은 데이터 처리 | `ValidFru::parse()`를 거쳐야만 데이터 접근 가능 | 유효성 검증 경계 |
+| 중복 감사 로그 작성 | 로그 작성 시 `AuditToken`이 소비됨 | 단회용 타입 |
 
 ---
+
+### 핵심 요약
+
+1. **7가지 패턴의 빈틈없는 조화** — 각 패턴은 독립적으로도 유용하지만, 결합되었을 때 강력한 안전망을 형성합니다.
+2. **8가지 버그 클래스의 원천 차단** — 위의 표에서 보듯, 수많은 런타임 실수가 컴파일 에러로 전환됩니다.
+3. **제로 런타임 오버헤드** — 이 모든 보장은 컴파일 시점에 완료됩니다. 생성된 기계어는 아무런 검사도 하지 않는 C 코드만큼이나 빠릅니다. **하지만 C는 버그가 있을 수 있고, 이 코드는 그럴 수 없습니다.**
+4. **점진적 도입 가능** — 이 모든 패턴을 한꺼번에 적용할 필요는 없습니다. 가장 필요한 부분부터 하나씩 도입해 나가세요.
+5. **확장 가능한 설계 템플릿** — 이 장의 구조는 여러분만의 타입 안전한 진단 워크플로우를 설계할 때 훌륭한 출발점이 될 것입니다.
 

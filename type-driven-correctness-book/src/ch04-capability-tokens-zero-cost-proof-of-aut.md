@@ -1,380 +1,142 @@
-# Capability Tokens — Zero-Cost Proof of Authority 🟡
+# 4. 역량 토큰 — 비용 없는 권한 증명 🟡
 
-> **What you'll learn:** How zero-sized types (ZSTs) act as compile-time proof tokens, enforcing privilege hierarchies, power sequencing, and revocable authority — all at zero runtime cost.
+> **학습 목표:** 제로 크기 타입(ZST)이 어떻게 컴파일 타임 증명 토큰 역할을 하는지 배웁니다. 이를 통해 권한 계층 구조, 전원 시퀀싱, 그리고 회수 가능한 권한을 **런타임 비용 없이** 강제하는 방법을 익힙니다.
 >
-> **Cross-references:** [ch03](ch03-single-use-types-cryptographic-guarantee.md) (single-use types), [ch05](ch05-protocol-state-machines-type-state-for-r.md) (type-state), [ch08](ch08-capability-mixins-compile-time-hardware-.md) (mixins), [ch10](ch10-putting-it-all-together-a-complete-diagn.md) (integration)
+> **관련 장:** [03장](ch03-single-use-types-cryptographic-guarantee.md) (단회용 타입), [05장](ch05-protocol-state-machines-type-state-for-r.md) (타입 상태), [08장](ch08-capability-mixins-compile-time-hardware-.md) (믹스인), [10장](ch05-protocol-state-machines-type-state-for-r.md) (통합)
 
-## The Problem: Who Is Allowed to Do What?
+---
 
-In hardware diagnostics, some operations are **dangerous**:
+### 문제 요망: 무엇을 할 권한이 있는가?
 
-- Programming BMC firmware
-- Resetting PCIe links
-- Writing OTP fuses
-- Enabling high-voltage test modes
+하드웨어 진단에서 일부 작업은 **위험**합니다:
 
-In C/C++, these are guarded by runtime checks:
+- BMC 펌웨어 프로그래밍
+- PCIe 링크 리셋
+- OTP 퓨즈 쓰기
+- 고전압 테스트 모드 활성화
+
+C/C++에서는 이러한 작업을 런타임 검사로 보호합니다.
 
 ```c
-// C — runtime permission check
+// C — 런타임 권한 검사
 int reset_pcie_link(bmc_handle_t bmc, int slot) {
-    if (!bmc->is_admin) {        // runtime check
+    if (!bmc->is_admin) {        // 런타임 검사
         return -EPERM;
     }
-    if (!bmc->link_trained) {    // another runtime check
-        return -EINVAL;
-    }
-    // ... do the dangerous thing ...
+    // ... 위험한 작업 수행 ...
     return 0;
 }
 ```
 
-Every function that does something dangerous must repeat these checks. Forget one,
-and you have a privilege escalation bug.
+위험한 작업을 수행하는 모든 함수는 이 검사를 반복해야 합니다. 하나라도 잊어버리면 권한 상승(Privilege escalation) 버그가 됩니다.
 
-## Zero-Sized Types as Proof Tokens
+---
 
-A **capability token** is a zero-sized type (ZST) that proves the caller has
-the authority to perform an action. It costs **zero bytes** at runtime — it exists
-only in the type system:
+### 증명 토큰으로서의 제로 크기 타입 (ZST)
+
+**역량 토큰(Capability Token)**은 호출자가 특정 작업을 수행할 권한이 있음을 증명하는 제로 크기 타입(ZST)입니다. 런타임에는 **0바이트**를 차지하며, 오직 타입 시스템에만 존재합니다.
 
 ```rust,ignore
-use std::marker::PhantomData;
-
-/// Proof that the caller has admin privileges.
-/// Zero-sized — compiles away completely.
-/// Not Clone, not Copy — must be explicitly passed.
+/// 관리자 권한이 있음을 증명하는 토큰.
+/// 제로 크기 타입 — 컴파일 시 완전히 사라짐.
+/// Clone/Copy 불가 — 명시적으로 전달되어야 함.
 pub struct AdminToken {
-    _private: (),   // prevents construction outside this module
+    _private: (),   // 모듈 외부에서 생성을 방지함
 }
 
-/// Proof that the PCIe link is trained and ready.
+/// PCIe 링크가 훈련(Trained)되었음을 증명하는 토큰.
 pub struct LinkTrainedToken {
     _private: (),
 }
 
-pub struct BmcController { /* ... */ }
-
 impl BmcController {
-    /// Authenticate as admin — returns a capability token.
-    /// This is the ONLY way to create an AdminToken.
+    /// 관리자로 인증 — 역량 토큰을 반환함.
+    /// 이것이 AdminToken을 생성할 수 있는 유일한 방법임.
     pub fn authenticate_admin(
         &mut self,
         credentials: &[u8],
     ) -> Result<AdminToken, &'static str> {
-        // ... validate credentials ...
-        # let valid = true;
-        if valid {
-            Ok(AdminToken { _private: () })
-        } else {
-            Err("authentication failed")
-        }
+        // ... 자격 증명 검증 ...
+        Ok(AdminToken { _private: () })
     }
 
-    /// Train the PCIe link — returns proof that it's trained.
-    pub fn train_link(&mut self) -> Result<LinkTrainedToken, &'static str> {
-        // ... perform link training ...
-        Ok(LinkTrainedToken { _private: () })
-    }
-
-    /// Reset a PCIe link — requires BOTH admin + link-trained proof.
-    /// No runtime checks needed — the tokens ARE the proof.
+    /// PCIe 링크 리셋 — 관리자 권한과 링크 훈련 증명이 모두 필요함.
+    /// 런타임 검사가 필요 없음 — 토큰 자체가 증명이기 때문임.
     pub fn reset_pcie_link(
         &mut self,
-        _admin: &AdminToken,         // zero-cost proof of authority
-        _trained: &LinkTrainedToken,  // zero-cost proof of state
+        _admin: &AdminToken,         // 비용 없는 권한 증명
+        _trained: &LinkTrainedToken,  // 비용 없는 상태 증명
         slot: u32,
     ) -> Result<(), &'static str> {
-        println!("Resetting PCIe link on slot {slot}");
+        println!("{slot}번 슬롯의 PCIe 링크 리셋 중...");
         Ok(())
     }
 }
 ```
 
-Usage — the type system enforces the workflow:
+사용 예시:
 
 ```rust,ignore
 fn maintenance_workflow(bmc: &mut BmcController) -> Result<(), &'static str> {
-    // Step 1: Authenticate — get admin proof
-    let admin = bmc.authenticate_admin(b"secret")?;
+    let admin = bmc.authenticate_admin(b"secret")?; // 단계 1: 권한 획득
+    let trained = bmc.train_link()?;                // 단계 2: 상태 증명 획득
 
-    // Step 2: Train link — get trained proof
-    let trained = bmc.train_link()?;
-
-    // Step 3: Reset — compiler requires both tokens
+    // 단계 3: 컴파일러가 두 토큰을 모두 요구함
     bmc.reset_pcie_link(&admin, &trained, 0)?;
-
-    Ok(())
-}
-
-// This WON'T compile:
-fn unprivileged_attempt(bmc: &mut BmcController) -> Result<(), &'static str> {
-    let trained = bmc.train_link()?;
-    // bmc.reset_pcie_link(???, &trained, 0)?;
-    //                     ^^^ no AdminToken — can't call this
     Ok(())
 }
 ```
 
-The `AdminToken` and `LinkTrainedToken` are **zero bytes** in the compiled binary.
-They exist only during type-checking. The function signature `fn reset_pcie_link(&mut self, _admin: &AdminToken, ...)` is a **proof obligation** — "you may only
-call this if you can produce an `AdminToken`" — and the only way to produce one is
-through `authenticate_admin()`.
+이 토큰들은 컴파일된 바이너리에서 **0바이트**가 됩니다. 함수 시그니처는 "이 함수를 호출하려면 `AdminToken`을 제시해야 하며, 이를 얻는 유일한 방법은 `authenticate_admin()`뿐이다"라는 **증명 의무**를 명시적으로 나타냅니다.
 
-## Power Sequencing Authority
+---
 
-Server power sequencing has strict ordering: standby → auxiliary → main → CPU.
-Reversing the sequence can damage hardware. Capability tokens enforce ordering:
+### 계층적 역량 (Hierarchical Capabilities)
+
+실제 시스템에는 계층이 존재합니다. 관리자는 운영자가 할 수 있는 모든 일을 할 수 있어야 합니다. 이를 트레이트 계층 구조로 모델링할 수 있습니다.
 
 ```rust,ignore
-/// State tokens — each one proves the previous step completed.
-pub struct StandbyOn { _p: () }
-pub struct AuxiliaryOn { _p: () }
-pub struct MainOn { _p: () }
-pub struct CpuPowered { _p: () }
-
-pub struct PowerController { /* ... */ }
-
-impl PowerController {
-    /// Step 1: Enable standby power. No precondition.
-    pub fn enable_standby(&mut self) -> Result<StandbyOn, &'static str> {
-        println!("Standby power ON");
-        Ok(StandbyOn { _p: () })
-    }
-
-    /// Step 2: Enable auxiliary — requires standby proof.
-    pub fn enable_auxiliary(
-        &mut self,
-        _standby: &StandbyOn,
-    ) -> Result<AuxiliaryOn, &'static str> {
-        println!("Auxiliary power ON");
-        Ok(AuxiliaryOn { _p: () })
-    }
-
-    /// Step 3: Enable main — requires auxiliary proof.
-    pub fn enable_main(
-        &mut self,
-        _aux: &AuxiliaryOn,
-    ) -> Result<MainOn, &'static str> {
-        println!("Main power ON");
-        Ok(MainOn { _p: () })
-    }
-
-    /// Step 4: Power CPU — requires main proof.
-    pub fn power_cpu(
-        &mut self,
-        _main: &MainOn,
-    ) -> Result<CpuPowered, &'static str> {
-        println!("CPU powered ON");
-        Ok(CpuPowered { _p: () })
-    }
-}
-
-fn power_on_sequence(ctrl: &mut PowerController) -> Result<CpuPowered, &'static str> {
-    let standby = ctrl.enable_standby()?;
-    let aux = ctrl.enable_auxiliary(&standby)?;
-    let main = ctrl.enable_main(&aux)?;
-    let cpu = ctrl.power_cpu(&main)?;
-    Ok(cpu)
-}
-
-// Trying to skip a step:
-// fn wrong_order(ctrl: &mut PowerController) {
-//     ctrl.power_cpu(???);  // ❌ can't produce MainOn without enable_main()
-// }
-```
-
-## Hierarchical Capabilities
-
-Real systems have **hierarchies** — an admin can do everything a user can do,
-plus more. Model this with a trait hierarchy:
-
-```rust,ignore
-/// Base capability — anyone who is authenticated.
-pub trait Authenticated {
-    fn token_id(&self) -> u64;
-}
-
-/// Operator can read sensors and run non-destructive diagnostics.
+pub trait Authenticated { fn token_id(&self) -> u64; }
 pub trait Operator: Authenticated {}
-
-/// Admin can do everything an operator can, plus destructive operations.
 pub trait Admin: Operator {}
 
-// Concrete tokens:
+// 구체적인 토큰들:
 pub struct UserToken { id: u64 }
-pub struct OperatorToken { id: u64 }
 pub struct AdminCapToken { id: u64 }
 
-impl Authenticated for UserToken { fn token_id(&self) -> u64 { self.id } }
-impl Authenticated for OperatorToken { fn token_id(&self) -> u64 { self.id } }
-impl Operator for OperatorToken {}
+// AdminCapToken은 Authenticated, Operator, Admin을 모두 만족함
 impl Authenticated for AdminCapToken { fn token_id(&self) -> u64 { self.id } }
 impl Operator for AdminCapToken {}
 impl Admin for AdminCapToken {}
 
-pub struct Bmc { /* ... */ }
-
 impl Bmc {
-    /// Anyone authenticated can read sensors.
-    pub fn read_sensor(&self, _who: &impl Authenticated, id: u32) -> f64 {
-        42.0 // stub
-    }
+    /// 운영자 이상만 진단을 실행할 수 있음
+    pub fn run_diag(&mut self, _who: &impl Operator, test: &str) -> bool { true }
 
-    /// Only operators and above can run diagnostics.
-    pub fn run_diag(&mut self, _who: &impl Operator, test: &str) -> bool {
-        true // stub
-    }
-
-    /// Only admins can flash firmware.
-    pub fn flash_firmware(&mut self, _who: &impl Admin, image: &[u8]) -> Result<(), &'static str> {
-        Ok(()) // stub
-    }
+    /// 관리자만 펌웨어를 업데이트할 수 있음
+    pub fn flash_firmware(&mut self, _who: &impl Admin, image: &[u8]) -> Result<(), &'static str> { Ok(()) }
 }
 ```
 
-An `AdminCapToken` can be passed to any function — it satisfies `Authenticated`,
-`Operator`, and `Admin`. A `UserToken` can only call `read_sensor()`. The compiler
-enforces the entire privilege model **at zero runtime cost**.
-
-## Lifetime-Bounded Capability Tokens
-
-Sometimes a capability should be **scoped** — valid only within a certain lifetime.
-Rust's borrow checker handles this naturally:
-
-```rust,ignore
-/// A scoped admin session. The token borrows the session,
-/// so it cannot outlive it.
-pub struct AdminSession {
-    _active: bool,
-}
-
-pub struct ScopedAdminToken<'session> {
-    _session: &'session AdminSession,
-}
-
-impl AdminSession {
-    pub fn begin(credentials: &[u8]) -> Result<Self, &'static str> {
-        // ... authenticate ...
-        Ok(AdminSession { _active: true })
-    }
-
-    /// Create a scoped token — lives only as long as the session.
-    pub fn token(&self) -> ScopedAdminToken<'_> {
-        ScopedAdminToken { _session: self }
-    }
-}
-
-fn scoped_example() -> Result<(), &'static str> {
-    let session = AdminSession::begin(b"credentials")?;
-    let token = session.token();
-
-    // Use token within this scope...
-    // When session drops, token is invalidated by the borrow checker.
-    // No need for runtime expiry checks.
-
-    // drop(session);
-    // ❌ ERROR: cannot move out of `session` because it is borrowed
-    //    (by `token`, which holds &session)
-    //
-    // Even if we skip drop() and just try to use `token` after
-    // session goes out of scope — same error: lifetime mismatch.
-
-    Ok(())
-}
-```
-
-### When to Use Capability Tokens
-
-| Scenario | Pattern |
-|----------|---------|
-| Privileged hardware operations | ZST proof token (AdminToken) |
-| Multi-step sequencing | Chain of state tokens (StandbyOn → AuxiliaryOn → ...) |
-| Role-based access control | Trait hierarchy (Authenticated → Operator → Admin) |
-| Time-limited privileges | Lifetime-bounded tokens (`ScopedAdminToken<'a>`) |
-| Cross-module authority | Public token type, private constructor |
-
-### Cost Summary
-
-| What | Runtime cost |
-|------|:------:|
-| ZST token in memory | 0 bytes |
-| Token parameter passing | Optimised away by LLVM |
-| Trait hierarchy dispatch | Static dispatch (monomorphised) |
-| Lifetime enforcement | Compile-time only |
-
-**Total runtime overhead: zero.** The privilege model exists only in the type system.
-
-## Capability Token Hierarchy
-
-```mermaid
-flowchart TD
-    AUTH["authenticate(user, pass)"] -->|returns| AT["AdminToken"]
-    AT -->|"&AdminToken"| FW["firmware_update()"]
-    AT -->|"&AdminToken"| RST["reset_pcie_link()"]
-    AT -->|downgrade| OP["OperatorToken"]
-    OP -->|"&OperatorToken"| RD["read_sensors()"]
-    OP -.->|"attempt firmware_update"| ERR["❌ Compile Error"]
-    style AUTH fill:#e1f5fe,color:#000
-    style AT fill:#c8e6c9,color:#000
-    style OP fill:#fff3e0,color:#000
-    style FW fill:#e8f5e9,color:#000
-    style RST fill:#e8f5e9,color:#000
-    style RD fill:#fff3e0,color:#000
-    style ERR fill:#ffcdd2,color:#000
-```
-
-## Exercise: Tiered Diagnostic Permissions
-
-Design a three-tier capability system: `ViewerToken`, `TechToken`, `EngineerToken`.
-- Viewers can call `read_status()`
-- Techs can also call `run_quick_diag()`
-- Engineers can also call `flash_firmware()`
-- Higher tiers can do everything lower tiers can (use trait bounds or token conversion).
-
-<details>
-<summary>Solution</summary>
-
-```rust,ignore
-// Tokens — zero-sized, private constructors
-pub struct ViewerToken { _private: () }
-pub struct TechToken { _private: () }
-pub struct EngineerToken { _private: () }
-
-// Capability traits — hierarchical
-pub trait CanView {}
-pub trait CanDiag: CanView {}
-pub trait CanFlash: CanDiag {}
-
-impl CanView for ViewerToken {}
-impl CanView for TechToken {}
-impl CanView for EngineerToken {}
-impl CanDiag for TechToken {}
-impl CanDiag for EngineerToken {}
-impl CanFlash for EngineerToken {}
-
-pub fn read_status(_tok: &impl CanView) -> String {
-    "status: OK".into()
-}
-
-pub fn run_quick_diag(_tok: &impl CanDiag) -> String {
-    "diag: PASS".into()
-}
-
-pub fn flash_firmware(_tok: &impl CanFlash, _image: &[u8]) {
-    // Only engineers reach here
-}
-```
-
-</details>
-
-## Key Takeaways
-
-1. **ZST tokens cost zero bytes** — they exist only in the type system; LLVM optimises them away completely.
-2. **Private constructors = unforgeable** — only your module's `authenticate()` can mint a token.
-3. **Trait hierarchies model permission levels** — `CanFlash: CanDiag: CanView` mirrors real RBAC.
-4. **Lifetime-bounded tokens revoke automatically** — `ScopedAdminToken<'session>` can't outlive the session.
-5. **Combine with type-state (ch05)** for protocols that require authentication *and* sequenced operations.
+`AdminCapToken`은 모든 함수에 전달될 수 있지만, `UserToken`은 `run_diag()`를 호출할 수 없습니다. 컴파일러가 이 권한 모델 전체를 **런타임 비용 0**으로 강제합니다.
 
 ---
+
+### 역량 토큰 사용 시나리오
+
+| 시나리오 | 적용 패턴 |
+|----------|---------|
+| 권한이 필요한 하드웨어 조작 | ZST 증명 토큰 (AdminToken) |
+| 다단계 시퀀싱 강제 | 상태 토큰 체인 (StandbyOn → AuxiliaryOn → ...) |
+| 역할 기반 접근 제어(RBAC) | 트레이트 계층 구조 (Authenticated → Operator → Admin) |
+| 시간 제한 권한 | 수명(Lifetime)이 제한된 토큰 (`ScopedAdminToken<'a>`) |
+
+---
+
+### 핵심 요약
+
+1. **ZST 토큰은 0바이트를 차지함** — 타입 시스템에만 존재하며 LLVM에 의해 완전히 최적화되어 사라집니다.
+2. **비공개 생성자 = 위조 불가능** — 오직 인증된 모듈의 특정 함수만이 토큰을 발행할 수 있습니다.
+3. **트레이트 계층으로 권한 수준 모델링** — `Admin: Operator: Authenticated` 구조는 실제 RBAC 모델을 완벽히 반영합니다.
+4. **자동 권한 회수** — 수명이 할당된 토큰은 세션이 종료되면 빌림 검사기에 의해 자동으로 무효화됩니다.
 

@@ -1,105 +1,69 @@
-# 요약 및 참조 카드 (Summary and Reference Card)
+# 15. 요약 및 핵심 참조 카드 🟡
 
-## 빠른 참조 카드 (Quick Reference Card)
+> **학습 목표:**
+> - 비동기 Rust의 핵심 개념을 한눈에 볼 수 있는 **참조 카드(Cheat Sheet)**를 제공합니다.
+> - 상황별 최적의 도구(채널, 뮤텍스, 런타임 등) 선택 가이드를 제시합니다.
+> - 자주 발생하는 에러 메시지와 그에 대한 해결책을 정리합니다.
+> - 다음 단계로 나아가기 위한 추천 학습 리소스를 소개합니다.
 
-### 비동기 멘탈 모델
+---
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  async fn → 상태 머신 (열거형) → impl Future        │
-│  .await   → 내부 퓨처를 poll() 함                   │
-│  실행기   → loop { poll(); 깨어날 때까지 잠듦; }    │
-│  웨이커   → "이봐 실행기, 나를 다시 폴링해줘"       │
-│  Pin      → "메모리에서 이동하지 않겠다고 약속함"   │
-└─────────────────────────────────────────────────────┘
-```
+### 🧠 비동기 멘탈 모델 (Mental Model)
 
-### 흔히 사용되는 패턴 치트 시트
+| 개념 | 핵심 설명 |
+| :--- | :--- |
+| **`async fn`** | 컴파일러에 의해 '상태 머신(열거형)'으로 변환되는 퓨처 구현체 |
+| **`.await`** | 현재 태스크를 멈추고 내부 퓨처가 `Ready`가 될 때까지 기다림 |
+| **실행기(Executor)** | 준비된 퓨처를 `poll()`하고, 쉴 때는 OS와 협력해 잠드는 무한 루프 |
+| **웨이커(Waker)** | "데이터 왔으니 나를 다시 폴링해!"라고 실행기를 깨우는 초인종 |
+| **Pin** | "이 데이터는 메모리에서 위치를 옮기면 안 된다"는 특별한 약속 |
 
-| 목표 | 방법 |
-|------|-----|
-| 두 퓨처를 동시에 실행 | `tokio::join!(a, b)` |
-| 두 퓨처 경합 처리 | `tokio::select! { ... }` |
-| 백그라운드 태스크 스폰 | `tokio::spawn(async { ... })` |
-| 비동기에서 블로킹 코드 실행 | `tokio::task::spawn_blocking(\\|\\| { ... })` |
-| 동시성 제한 | `Semaphore::new(N)` |
-| 수많은 태스크 결과 수집 | `JoinSet` |
-| 태스크 간 상태 공유 | `Arc<Mutex<T>>` 또는 채널 |
-| 우아한 종료 | `watch::channel` + `select!` |
-| 스트림을 N개씩 동시에 처리 | `.buffer_unordered(N)` |
-| 퓨처에 타임아웃 적용 | `tokio::time::timeout(dur, fut)` |
-| 백오프와 함께 재시도 | 커스텀 결합기 (13장 참조) |
+---
 
-### 피닝(Pinning) 빠른 참조
+### 🛠️ 상황별 도구 선택 가이드
 
-| 상황 | 방법 |
-|-----------|-----|
-| 퓨처를 힙에 고정 | `Box::pin(fut)` |
-| 퓨처를 스택에 고정 | `tokio::pin!(fut)` |
-| `Unpin` 타입을 고정 | `Pin::new(&mut val)` — 안전하고 비용 없음 |
-| 고정된 트레이트 객체 반환 | `-> Pin<Box<dyn Future<Output = T> + Send>>` |
+#### 1. 채널(Channel) 선택
+- **`mpsc` (N:1)**: 실무에서 가장 많이 쓰임. 작업 큐나 이벤트 전달용.
+- **`oneshot` (1:1)**: 딱 한 번의 결과 응답(Response)이 필요할 때.
+- **`broadcast` (N:N)**: "모든 워커 종료!" 같은 공지사항 전파용.
+- **`watch` (1:N)**: 설정값 변경처럼 '최신 상태'만 동기화할 때.
 
-### 채널 선택 가이드
+#### 2. 뮤텍스(Mutex) 선택
+- **`std::sync::Mutex`**: 락을 잡고 있는 동안 `.await`를 **하지 않을 때**. (매우 짧은 연산)
+- **`tokio::sync::Mutex`**: 락을 잡은 채로 네트워크 IO 등 **`.await`를 해야 할 때**.
+- **`RwLock`**: 읽기 요청이 압도적으로 많고 쓰기는 가끔 일어날 때.
 
-| 채널 | 생산자 | 소비자 | 값 | 사용 시점 |
-|---------|-----------|-----------|--------|----------|
-| `mpsc` | N | 1 | 스트림 | 작업 큐, 이벤트 버스 |
-| `oneshot` | 1 | 1 | 단일 값 | 요청/응답, 완료 알림 |
-| `broadcast` | N | N | 모두 수신 | 알림 전파(Fan-out), 종료 시그널 |
-| `watch` | 1 | N | 최신 값만 | 설정 업데이트, 상태 확인 |
+#### 3. 동시성 제어
+- **`tokio::join!`**: 고정된 몇 개의 작업을 동시에 실행할 때.
+- **`tokio::select!`**: 여러 작업 중 가장 먼저 끝나는 것을 처리할 때.
+- **`buffer_unordered(N)`**: 스트림의 아이템을 N개씩 병렬로 처리할 때.
+- **`JoinSet`**: 동적으로 생성되는 수많은 태스크를 관리하고 결과를 수집할 때.
 
-### 뮤텍스(Mutex) 선택 가이드
+---
 
-| 뮤텍스 | 사용 시점 |
-|-------|----------|
-| `std::sync::Mutex` | 짧게 유지되는 락, `.await`를 가로지르지 않을 때 |
-| `tokio::sync::Mutex` | `.await` 지점을 가로질러 락을 유지해야 할 때 |
-| `parking_lot::Mutex` | 경합이 심하고 `.await`가 없으며 성능이 중요할 때 |
-| `tokio::sync::RwLock` | 읽기 주체가 많고 쓰기가 적으며, 락이 `.await`를 가로지를 때 |
+### 🚨 트러블슈팅: 흔한 에러와 해결책
 
-### 의사 결정 빠른 참조
+1.  **`future is not Send`**
+    - **원인**: `.await` 하는 동안 `Rc`, `RefCell` 등 스레드 안전하지 않은 데이터를 들고 있음.
+    - **해결**: 해당 데이터를 블록(`{ }`)으로 감싸거나 드롭하여 `.await` 전에 해제하세요.
 
-```text
-동시성(concurrency)이 필요한가요?
-├── I/O 바운드 → async/await
-├── CPU 바운드 → rayon / std::thread
-└── 혼합됨 → CPU 부분에 spawn_blocking 사용
+2.  **`borrowed value does not live long enough` (spawn 시 발생)**
+    - **원인**: `tokio::spawn`은 태스크가 언제 끝날지 몰라 참조 데이터를 허용하지 않음.
+    - **해결**: `Arc`를 쓰거나 데이터를 **`clone()`**하여 태스크 안으로 소유권을 넘기세요.
 
-런타임을 선택하시나요?
-├── 서버 앱 → tokio
-├── 라이브러리 → 런타임 중립적 (futures 크레이트)
-├── 임베디드 → embassy
-└── 최소 기능 → smol
+3.  **프로그램이 아무 반응 없이 멈춤**
+    - **원인**: 실행기를 블록했거나(Sync Sleep 등), 웨이커 호출을 잊었을 가능성이 큼.
+    - **해결**: 블로킹 코드를 찾거나 `tokio-console`로 멈춘 태스크를 추적하세요.
 
-동시 실행 퓨처가 필요한가요?
-├── 'static + Send 가능 → tokio::spawn
-├── 'static + !Send 가능 → LocalSet
-├── 'static 불가능 → FuturesUnordered
-└── 추적/중단 필요 → JoinSet
-```
+---
 
-### 흔한 에러 메시지 및 해결 방법
+### 📚 추천 학습 리소스
+- **[Tokio 공식 튜토리얼](https://tokio.rs/tokio/tutorial)**: 가장 정석적인 실습 가이드
+- **[Crust of Rust: async/await](https://www.youtube.com/watch?v=ThjvMReOXYM)**: 내부 구조를 파헤치는 딥다이브 영상 (Jon Gjengset)
+- **[Actors with Tokio](https://ryhl.io/blog/actors-with-tokio/)**: 상태가 있는 서비스를 설계하는 실전 패턴 (Alice Ryhl)
 
-| 에러 | 원인 | 해결 방법 |
-|-------|-------|-----|
-| `future is not Send` | `.await`를 가로질러 `!Send` 타입 보유 | 해당 값을 `.await` 전에 드롭되도록 범위를 좁히거나, `current_thread` 런타임 사용 |
-| `borrowed value does not live long enough` (spawn 시) | `tokio::spawn`은 `'static`을 요구함 | `Arc`, `clone()`을 사용하거나 `FuturesUnordered` 고려 |
-| `the trait Future is not implemented for ()` | `.await` 누락 | 비동기 호출에 `.await` 추가 |
-| `cannot borrow as mutable` (poll 내에서) | 자기 참조 빌려오기 | `Pin<&mut Self>`를 올바르게 사용 (4장 참조) |
-| 프로그램이 조용히 멈춤 | `waker.wake()` 호출 잊음 | 모든 `Pending` 경로에서 웨이커를 등록하고 트리거하는지 확인 |
+---
 
-### 더 읽을거리
+**비동기 Rust 교육 가이드 끝**
+성공적인 비동기 개발을 기원합니다! 🚀
 
-| 리소스 | 이유 |
-|----------|-----|
-| [Tokio 튜토리얼](https://tokio.rs/tokio/tutorial) | 공식 실습 가이드 — 첫 프로젝트에 최적 |
-| [비동기 북 (공식)](https://rust-lang.github.io/async-book/) | 언어 수준에서의 `Future`, `Pin`, `Stream` 설명 |
-| [Jon Gjengset — Crust of Rust: async/await](https://www.youtube.com/watch?v=ThjvMReOXYM) | 라이브 코딩과 함께하는 2시간짜리 내부 구조 심층 분석 |
-| [Alice Ryhl — Actors with Tokio](https://ryhl.io/blog/actors-with-tokio/) | 상태 저장 서비스를 위한 운영 아키텍처 패턴 |
-| [Without Boats — Pin, Unpin, and why Rust needs them](https://without.boats/blog/pin/) | 언어 설계자가 밝히는 원래의 동기 |
-| [Tokio mini-Redis](https://github.com/tokio-rs/mini-redis) | 완전한 비동기 Rust 프로젝트 — 학습하기 좋은 운영 수준 코드 |
-| [Tower 문서](https://docs.rs/tower) | axum, tonic, hyper에서 사용되는 미들웨어/서비스 아키텍처 |
-
-***
-
-*비동기 Rust 교육 가이드 끝*

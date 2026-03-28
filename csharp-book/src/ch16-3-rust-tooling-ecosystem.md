@@ -1,125 +1,55 @@
-## C# 개발자를 위한 필수 Rust 도구 (Essential Rust Tooling for C# Developers)
+# 필수 도구 생태계: C# 개발자를 위한 가이드
 
-> **학습 내용:** C#의 개발 도구에 대응하는 Rust의 도구들을 알아봅니다 — Clippy (Roslyn 분석기),
-> rustfmt (dotnet format), cargo doc (XML 문서), cargo watch (dotnet watch), 그리고 VS Code 확장 프로그램.
->
-> **난이도:** 🟢 초급
+> **학습 목표:** C# 개발 환경에서 익숙하게 사용하던 도구들이 Rust에서는 어떤 형태로 존재하는지 알아봅니다. 린트(Lint), 포맷팅, 문서화, 그리고 생산성을 높여주는 VS Code 확장 프로그램까지 Rust 개발의 효율을 극대화하는 도구 세트를 구성합니다.
 
-### 도구 비교 (Tool Comparison)
+---
 
-| C# 도구 | Rust 대응 도구 | 설치 방법 | 용도 |
-|---------|----------------|---------|---------|
-| Roslyn 분석기 | **Clippy** | `rustup component add clippy` | 린트(Lint) + 스타일 제안 |
-| `dotnet format` | **rustfmt** | `rustup component add rustfmt` | 자동 포맷팅 |
-| XML 문서 주석 | **`cargo doc`** | 기본 내장 | HTML 문서 생성 |
-| OmniSharp / Roslyn | **rust-analyzer** | VS Code 확장 | IDE 지원 |
-| `dotnet watch` | **cargo-watch** | `cargo install cargo-watch` | 저장 시 자동 재빌드 |
-| — | **cargo-expand** | `cargo install cargo-expand` | 매크로 확장 결과 확인 |
-| `dotnet audit` | **cargo-audit** | `cargo install cargo-audit` | 보안 취약점 스캔 |
+### 1. C# 도구 vs Rust 도구 일대일 매칭
 
-### Clippy: 자동화된 코드 검토 도구 (Automated Code Reviewer)
-```bash
-# 프로젝트에서 Clippy 실행
-cargo clippy
+| **C# (Visual Studio/.NET)** | **Rust (CLI/Tooling)** | **주요 역할** |
+| :--- | :--- | :--- |
+| **Roslyn 분석기** | **Clippy** | 코드 품질 검사 및 개선 제안 |
+| **`dotnet format`** | **rustfmt** | 일관된 코딩 스타일 자동 적용 |
+| **XML 주석 문서** | **cargo doc** | 소스 코드 기반의 HTML 문서 생성 |
+| **OmniSharp / IntelliSense** | **rust-analyzer** | 코드 완성 및 타입 정보 제공 |
+| **`dotnet watch`** | **cargo-watch** | 파일 수정 시 자동 빌드/테스트 |
+| **`dotnet audit`** | **cargo-audit** | 의존성 라이브러리의 보안 취약점 점검 |
 
-# 경고를 에러로 처리 (CI/CD용)
-cargo clippy -- -D warnings
+---
 
-# 제안사항 자동 수정
-cargo clippy --fix
-```
+### 2. Clippy: 당신의 곁에 있는 코드 리뷰어
+Clippy는 단순히 문법 에러만 잡아주는 것이 아니라, 더 Rust다운(Idiomatic) 코드를 짤 수 있게 도와줍니다.
 
-```rust
-// Clippy는 수백 가지의 안티 패턴을 찾아냅니다:
+- **예시**: `if x == true { ... }` → "그냥 `if x { ... }`라고 쓰세요."
+- **예시**: `vec.len() == 0` → "대신 `.is_empty()`를 쓰는 게 더 직관적입니다."
+- **예시**: `for i in 0..vec.len() { ... vec[i] ... }` → "인덱스 대신 반복자를 직접 쓰세요."
 
-// Clippy 적용 전:
-if x == true { }           // 경고: bool 값과의 비교 체크
-let _ = vec.len() == 0;    // 경고: 대신 .is_empty() 사용 권장
-for i in 0..vec.len() { }  // 경고: 대신 .iter().enumerate() 사용 권장
+---
 
-// Clippy 제안 적용 후:
-if x { }
-let _ = vec.is_empty();
-for (i, item) in vec.iter().enumerate() { }
-```
-
-### rustfmt: 일관된 포맷팅 (Consistent Formatting)
-```bash
-# 모든 파일 포맷팅
-cargo fmt
-
-# 변경 없이 포맷팅 상태만 확인 (CI/CD용)
-cargo fmt -- --check
-```
-
-```toml
-# rustfmt.toml — 포맷팅 설정 커스터마이징 (.editorconfig와 유사)
-max_width = 100
-tab_spaces = 4
-use_field_init_shorthand = true
-```
-
-### cargo doc: 문서 생성 (Documentation Generation)
-```bash
-# 문서 생성 및 열기 (의존성 라이브러리 포함)
-cargo doc --open
-
-# 문서 내 테스트 코드 실행
-cargo test --doc
-```
+### 3. cargo doc: 테스트가 가능한 문서
+Rust는 문서 작성을 언어 차원에서 강력하게 지원합니다. 특히 문서 안에 포함된 **예제 코드(` ``` `)는 실제로 컴파일되고 실행**됩니다. 문서가 틀리면 테스트가 실패하므로, 항상 최신의 정확한 문서를 유지할 수 있습니다.
 
 ```rust
-/// 원의 넓이를 계산합니다.
+/// 두 수의 합을 구합니다.
 ///
-/// # 인자 (Arguments)
-/// * `radius` - 원의 반지름 (음수여서는 안 됩니다)
-///
-/// # 예제 (Examples)
+/// # 예제
 /// ```
-/// let area = my_crate::circle_area(5.0);
-/// assert!((area - 78.54).abs() < 0.01);
+/// let result = my_crate::add(2, 3);
+/// assert_eq!(result, 5); // 이 코드는 실제로 테스트됩니다.
 /// ```
-///
-/// # 패닉 (Panics)
-/// `radius`가 음수인 경우 패닉이 발생합니다.
-pub fn circle_area(radius: f64) -> f64 {
-    assert!(radius >= 0.0, "반지름은 음수일 수 없습니다");
-    std::f64::consts::PI * radius * radius
-}
-// /// ``` 블록 안의 코드는 `cargo test` 실행 시 함께 컴파일되고 실행됩니다!
+pub fn add(a: i32, b: i32) -> i32 { a + b }
 ```
 
-### cargo watch: 자동 재빌드 (Auto-Rebuild)
-```bash
-# 파일 변경 시 자동 재빌드 (dotnet watch와 유사)
-cargo watch -x check          # 타입 체크만 수행 (가장 빠름)
-cargo watch -x test           # 저장 시 테스트 실행
-cargo watch -x 'run -- args'  # 저장 시 프로그램 실행
-cargo watch -x clippy         # 저장 시 린트 실행
-```
+---
 
-### cargo expand: 매크로 생성 결과 확인 (See What Macros Generate)
-```bash
-# derive 매크로 등으로 확장된 결과물 확인
-cargo expand --lib            # lib.rs 확장
-cargo expand module_name      # 특정 모듈 확장
-```
+### 4. 추천 VS Code 확장 프로그램
+- **rust-analyzer**: 필수 중의 필수. 강력한 코드 완성 기능을 제공합니다.
+- **CodeLLDB**: 디버깅을 위한 도구입니다. Visual Studio의 디버거와 유사한 경험을 제공합니다.
+- **Even Better TOML**: `Cargo.toml` 파일을 다룰 때 매우 편리합니다.
+- **Error Lens**: 에러와 경고를 코드 옆에 바로 보여주어 빠르게 수정할 수 있게 돕습니다.
 
-### 권장 VS Code 확장 프로그램 (Recommended VS Code Extensions)
+---
 
-| 확장 프로그램 | 용도 |
-|-----------|---------|
-| **rust-analyzer** | 코드 완성, 인라인 에러 표시, 리팩토링 |
-| **CodeLLDB** | 디버거 (Visual Studio 디버거와 유사) |
-| **Even Better TOML** | Cargo.toml 구문 강조 |
-| **crates** | Cargo.toml에서 최신 크레이트 버전 표시 |
-| **Error Lens** | 에러/경고를 인라인으로 즉시 표시 |
+### 💡 실무 팁: `cargo watch` 활용하기
+터미널을 하나 띄워두고 `cargo watch -x check`를 실행해 보세요. 파일을 저장할 때마다 자동으로 타입 체크를 수행해주므로, 굳이 수동으로 빌드해보지 않아도 즉각적으로 피드백을 받을 수 있습니다.
 
-***
-
-이 가이드에서 언급된 고급 주제들에 대해 더 자세히 알아보려면 다음 교육 문서를 참조하십시오:
-
-- **[Rust 패턴 (Rust Patterns)](../../rust-patterns-book/src/SUMMARY.md)** — 핀 프로젝션(Pin projections), 커스텀 할당자(custom allocators), 아레나 패턴(arena patterns), 락-프리(lock-free) 데이터 구조 및 고급 unsafe 패턴
-- **[Async Rust 교육 (Async Rust Training)](../../async-book/src/SUMMARY.md)** — tokio 심층 분석, 비동기 취소 안전성(async cancellation safety), 스트림 처리 및 프로덕션용 비동기 아키텍처
-- **[C++ 개발자를 위한 Rust 교육 (Rust Training for C++ Developers)](../../c-cpp-book/src/SUMMARY.md)** — 팀에 C++ 경험자가 있는 경우 유용합니다. 이동 의미론(move semantics) 매핑, RAII 차이점, 템플릿 vs 제네릭 등을 다룹니다.
-- **[C 개발자를 위한 Rust 교육 (Rust Training for C Developers)](../../c-cpp-book/src/SUMMARY.md)** — 상호 운용성(interop) 시나리오에 적합합니다. FFI 패턴, 임베디드 Rust 디버깅 및 `no_std` 프로그래밍을 다룹니다.
