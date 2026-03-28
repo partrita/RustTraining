@@ -39,8 +39,8 @@ jobs:
 
       - name: Install mdbook and dependencies
         run: |
-          cargo install mdbook
-          cargo install mdbook-mermaid
+          cargo install mdbook@0.4.52 --force
+          cargo install mdbook-mermaid@0.14.0 --force
 
       - name: Build documentation
         run: cargo xtask deploy
